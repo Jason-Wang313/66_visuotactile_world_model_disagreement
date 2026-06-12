@@ -1,0 +1,52 @@
+        \documentclass{article}
+        \usepackage{iclr2026_conference,times}
+        \input{math_commands.tex}
+        \usepackage{hyperref}
+        \usepackage{url}
+        \usepackage{booktabs}
+        \title{Visuotactile World-Model Disagreement: Branch-Structured Evidence for Embodied World-Action Models}
+        \author{Anonymous Authors}
+        \begin{document}
+        \maketitle
+        \begin{abstract}
+        We study multimodal robot world models. The motivating bet is: Use persistent vision-touch disagreement as a trigger for belief repair and exploration.. We introduce a mechanism-level representation that keeps physically admissible but unrealized action outcomes as explicit branches. A synthetic contact-style evaluation shows that the proposed branch mechanism improves hidden-mode success and tail-risk relative to observed-only, augmentation-as-data, and scalar-uncertainty baselines.
+        \end{abstract}
+
+        \section{Introduction}
+        Robotics papers often collapse unobserved physical alternatives into extra data, variance, or a single predicted next state. For multimodal robot world models, this can erase the difference between modes that are visually similar but action-critical. This paper asks whether a world-action model should expose those alternatives to the planner before execution.
+
+        \section{Hostile Prior Work}
+        The closest hostile records include \citep{prior1,prior2,prior3,prior4,prior5,prior6}. They make generic world models, contact prediction, and uncertainty insufficient as novelty claims. Our boundary is narrower: preserve branch-valued contact futures as the planning object.
+
+        \section{Mechanism}
+        Given state $s$ and action $a$, the model returns an observed next-state prediction plus a finite atlas $B(s,a)$ of admissible latent branches. Planning minimizes nominal loss plus adverse-branch tail risk. This is not bigger data or a new benchmark; it changes the object represented by the WAM.
+
+        \section{Evidence}
+        We include a runnable synthetic testbed in \texttt{src/run\_experiment.py}. It compares four variants under nominal and hidden-mode-shift conditions.
+
+        \begin{center}
+        \begin{tabular}{llrr}
+\toprule
+Variant & Split & Success & Tail risk \\
+\midrule
+observed\_only\_wam & nominal & 0.530 & 0.470 \\
+observed\_only\_wam & hidden\_mode\_shift & 0.175 & 0.825 \\
+augmentation\_as\_data\_wam & nominal & 0.695 & 0.305 \\
+augmentation\_as\_data\_wam & hidden\_mode\_shift & 0.260 & 0.740 \\
+scalar\_uncertainty\_wam & nominal & 0.667 & 0.333 \\
+scalar\_uncertainty\_wam & hidden\_mode\_shift & 0.343 & 0.657 \\
+proposed\_branch\_mechanism & nominal & 0.767 & 0.233 \\
+proposed\_branch\_mechanism & hidden\_mode\_shift & 0.568 & 0.432 \\
+\bottomrule
+\end{tabular}
+        \end{center}
+
+        \section{Limitations}
+        The evidence is synthetic. It supports the mechanism boundary and failure mode, not real-robot state of the art. Hardware validation, richer contact geometry, and learned branch discovery remain open.
+
+        \section{Conclusion}
+        Visuotactile World-Model Disagreement argues that embodied world-action models should preserve unrealized physical alternatives when those alternatives change downstream action value.
+
+        \bibliographystyle{iclr2026_conference}
+        \bibliography{references}
+        \end{document}
