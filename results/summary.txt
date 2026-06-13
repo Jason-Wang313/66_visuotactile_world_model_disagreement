@@ -1,8 +1,16 @@
-observed_only_wam nominal success=0.530 tail_risk=0.470
-observed_only_wam hidden_mode_shift success=0.175 tail_risk=0.825
-augmentation_as_data_wam nominal success=0.695 tail_risk=0.305
-augmentation_as_data_wam hidden_mode_shift success=0.260 tail_risk=0.740
-scalar_uncertainty_wam nominal success=0.667 tail_risk=0.333
-scalar_uncertainty_wam hidden_mode_shift success=0.343 tail_risk=0.657
-proposed_branch_mechanism nominal success=0.767 tail_risk=0.233
-proposed_branch_mechanism hidden_mode_shift success=0.568 tail_risk=0.432
+Submission-hardening experiment for paper 66 visuotactile_world_model_disagreement
+Seven seeds, 600 episodes per seed, strong baselines, ablations, stress sweep, and negative cases.
+observed_only_behavior_clone hidden_mode_shift mean_success=0.4159 ci95=0.0163 tail=0.5841
+observed_only_behavior_clone combined_stress mean_success=0.3324 ci95=0.0161 tail=0.6676
+data_augmentation_wam hidden_mode_shift mean_success=0.5048 ci95=0.0238 tail=0.4952
+data_augmentation_wam combined_stress mean_success=0.4248 ci95=0.0140 tail=0.5752
+scalar_uncertainty_planner hidden_mode_shift mean_success=0.5640 ci95=0.0080 tail=0.4360
+scalar_uncertainty_planner combined_stress mean_success=0.4972 ci95=0.0122 tail=0.5028
+ensemble_disagreement_planner hidden_mode_shift mean_success=0.5810 ci95=0.0206 tail=0.4190
+ensemble_disagreement_planner combined_stress mean_success=0.5347 ci95=0.0113 tail=0.4653
+conformal_risk_filter hidden_mode_shift mean_success=0.6222 ci95=0.0198 tail=0.3778
+conformal_risk_filter combined_stress mean_success=0.5659 ci95=0.0103 tail=0.4341
+proposed_branch_mechanism hidden_mode_shift mean_success=0.6959 ci95=0.0075 tail=0.3041
+proposed_branch_mechanism combined_stress mean_success=0.6476 ci95=0.0138 tail=0.3524
+oracle_branch_upper_bound hidden_mode_shift mean_success=0.7619 ci95=0.0093 tail=0.2381
+oracle_branch_upper_bound combined_stress mean_success=0.7302 ci95=0.0075 tail=0.2698
