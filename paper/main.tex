@@ -1,72 +1,45 @@
-        \documentclass{article}
-        \usepackage{iclr2026_conference,times}
-        \input{math_commands.tex}
-        \usepackage{hyperref}
-        \usepackage{url}
-        \usepackage{booktabs}
-        \title{Visuotactile World-Model Disagreement: A Hardened Branch-Structured Diagnostic Study}
-        \author{Anonymous Authors}
-        \begin{document}
-        \maketitle
-        \begin{abstract}
-        We study multimodal robot world models. The submission-hardened claim is intentionally narrow: Use persistent vision-touch disagreement as a trigger for belief repair and exploration. We test whether an explicit branch representation for unrealized physical futures improves robustness under hidden physical modes, embodiment shift, and combined stress. Compared with observed-only behavior cloning, data-augmented WAMs, scalar uncertainty, ensemble disagreement, and conformal risk filtering, the proposed mechanism improves synthetic diagnostic success while remaining below an oracle upper bound. Submission-hardening version: v2.
-        \end{abstract}
+\documentclass{article}
+\usepackage{iclr2026_conference,times}
+\input{math_commands.tex}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\title{Visuotactile World-Model Disagreement: ICLR Main-Conference Gate Archive}
+\author{Anonymous Authors}
+\begin{document}
+\maketitle
+\begin{abstract}
+This document is not an ICLR main-conference submission. It is the v3 main-conference gate for a generated robotics draft about multimodal robot world models. The original research bet was: Use persistent vision-touch disagreement as a trigger for belief repair and exploration. After a stricter hostile review, the honest terminal decision is \textbf{KILL/ARCHIVE}. Submission-hardening version: v3.
+\end{abstract}
 
-        \section{Problem and Reviewer Threat Model}
-        The generated draft made a plausible mechanism claim but was too easy to attack: it used one seed, weak baselines, no error bars, no ablations, and a broad novelty statement. This version narrows the claim to a reproducible diagnostic benchmark. The paper does not claim real-robot state of the art. It asks whether Visuotactile world model disagreement should remain a candidate mechanism after hostile prior-work and empirical stress tests.
+\section{Gate Decision}
+The v2 paper was workshop-only. Under the active ICLR-main standard, that is insufficient. The local artifacts contain synthetic multi-seed diagnostics, but no real-robot validation, high-fidelity simulator benchmark, trained world-action model, implemented real baselines, or manual full-paper related-work synthesis. These missing items are not recoverable by editing text or rerunning the synthetic script.
 
-        \section{Hostile Prior Work and Novelty Boundary}
-        The closest hostile records include \citep{prior1,prior2,prior3,prior4,prior5,prior6}. They cover world models, uncertainty-aware planning, contact prediction, robot policy learning, and adjacent failure analysis. Those papers make three claims crowded: generic uncertainty, larger datasets, and benchmark-only framing. The surviving boundary is narrower: keep multiple action-conditioned physical futures explicit and let the planner choose diagnostic or risk-sensitive actions before execution. Advisor-name matches were treated only as weak coverage probes; technical closeness and threat level determined the hostile set.
+\section{Fatal ICLR-Main Blockers}
+\begin{itemize}
+\item Evidence is synthetic and generated from a shared batch template.
+\item Baselines are diagnostic probability models, not implemented competing robot systems.
+\item Ablations do not correspond to a trained model checkpoint.
+\item No hardware, high-fidelity benchmark, qualitative rollouts, or failure videos are available.
+\item Related work is based on pool slices and hostile metadata, not a manual full-paper synthesis.
+\item Claims would be misleading if framed as ICLR-main empirical robotics evidence.
+\end{itemize}
 
-        \section{Mechanism}
-        For state $s$ and candidate action $a$, the model predicts an observed next-state mean plus a branch atlas $B_\theta(s,a)=\{b_1,\ldots,b_K\}$ of plausible but unrealized physical outcomes. Planning uses
-        \[
-        J(a)=\mathbb{E}[L(s,a)] + \lambda\,\mathrm{CVaR}_\alpha(\{L(b_k,a)\}_k) + \eta\,D(a),
-        \]
-        where $D(a)$ rewards diagnostic actions that distinguish high-value branches. A failure memory stores corrected branch weights after execution. The key ablations remove the branch atlas, tail-risk objective, diagnostic probing, or failure memory.
+\section{Hostile Prior-Work Pressure}
+The closest local hostile records include:
+\begin{itemize}
+\item Multimodal AI: PaLM-E's Role in Vision-Language-Robotics \& the Future of Efficient Fine-Tuning (2026)
+\item MIRSAM: multimodal vision-language segment anything model for infrared small target detection (2025)
+\item Vision Language Models in Healthcare Through a Multimodal Approach to Medical Imaging and Clinical Applications (2026)
+\item EveryDayVLA: A Vision-Language-Action Model for Affordable Robotic Manipulation (2025)
+\item VLA-MP: A Vision-Language-Action Framework for Multimodal Perception and Physics-Constrained Action Generation in Autonomous Driving (2025)
+\end{itemize}
+These works make generic world models, uncertainty, model-based planning, and robot policy robustness crowded. Without real empirical evidence, the remaining novelty boundary is too weak for ICLR main.
 
-        \section{Evaluation Protocol}
-        The evidence is synthetic but stronger than the draft: seven random seeds, 600 episodes per seed, strong non-oracle baselines, an oracle branch upper bound, hidden-mode and embodiment-shift splits, a combined-stress split, ablations, stress sweeps, and negative cases. The benchmark is meant to falsify a mechanism boundary, not to certify hardware deployment.
+\section{What Remains Useful}
+The archive is still useful as an idea seed and reproducibility scaffold. The synthetic code, stress-test CSVs, reviewer attacks, and novelty-boundary docs can inform a future project. The correct next step is not more paper polishing; it is new evidence: implemented models, real baselines, manual related work, and robot or high-fidelity simulator validation.
 
-        \begin{center}
-        \begin{tabular}{lccc}
-\toprule
-Variant & Hidden shift & Embodiment shift & Combined stress \\
-\midrule
-Observed-only BC & 0.416 $\pm$ 0.016 & 0.442 $\pm$ 0.018 & 0.332 $\pm$ 0.016 \\
-Data-augmented WAM & 0.505 $\pm$ 0.024 & 0.516 $\pm$ 0.017 & 0.425 $\pm$ 0.014 \\
-Scalar uncertainty & 0.564 $\pm$ 0.008 & 0.588 $\pm$ 0.020 & 0.497 $\pm$ 0.012 \\
-Ensemble disagreement & 0.581 $\pm$ 0.021 & 0.603 $\pm$ 0.018 & 0.535 $\pm$ 0.011 \\
-Conformal risk filter & 0.622 $\pm$ 0.020 & 0.620 $\pm$ 0.013 & 0.566 $\pm$ 0.010 \\
-Proposed branch mechanism & 0.696 $\pm$ 0.007 & 0.699 $\pm$ 0.017 & 0.648 $\pm$ 0.014 \\
-Oracle branch upper bound & 0.762 $\pm$ 0.009 & 0.775 $\pm$ 0.019 & 0.730 $\pm$ 0.007 \\
-\bottomrule
-\end{tabular}
-        \end{center}
+\section{Terminal Action}
+Decision: \textbf{KILL/ARCHIVE for ICLR main}. Do not submit this paper to ICLR main in the current form. Revival requires a substantially new empirical project.
 
-        \begin{center}
-        \begin{tabular}{lrl}
-\toprule
-Ablation & Combined stress success & Removed component \\
-\midrule
-Full mechanism & 0.664 $\pm$ 0.008 & all components \\
-Minus branch atlas & 0.559 $\pm$ 0.015 & removes explicit unrealized futures \\
-Minus tail risk & 0.574 $\pm$ 0.014 & uses mean predicted value only \\
-Minus diagnostic probe & 0.600 $\pm$ 0.019 & does not actively test ambiguous physical modes \\
-Minus failure memory & 0.614 $\pm$ 0.010 & does not reuse repaired beliefs \\
-\bottomrule
-\end{tabular}
-        \end{center}
-
-        \section{Failure Cases and Limitations}
-        Negative cases remain: unmodeled hardware damage, semantic goal ambiguity, and adversarial sensor dropout all reduce success sharply. The mechanism is also vulnerable if the branch atlas omits the true physical mode. Therefore the honest readiness decision is workshop-only or strong-revise, not main-conference-ready without real hardware validation and a learned branch discovery module.
-
-        \section{Reproducibility}
-        Code is in \texttt{src/run\_experiment.py} and produces \texttt{results/metrics.csv}, \texttt{results/raw\_seed\_metrics.csv}, \texttt{results/ablation\_metrics.csv}, \texttt{results/stress\_sweep.csv}, and \texttt{results/negative\_cases.csv}. The canonical PDF is \texttt{C:/Users/wangz/Downloads/66.pdf}. No versioned PDFs are kept in Downloads.
-
-        \section{Conclusion}
-        Visuotactile World-Model Disagreement is submission-hardened as a narrow diagnostic study. The result supports continued work on explicit branch-valued world-action representations, while openly limiting the claim to synthetic evidence and hostile-prior-work-aware novelty.
-
-        \bibliographystyle{iclr2026_conference}
-        \bibliography{references}
-        \end{document}
+\end{document}

@@ -1,11 +1,19 @@
 # Reproducibility Checklist
 
-- [x] Canonical command: `python src/run_experiment.py`
-- [x] Python dependencies: standard library only.
-- [x] LaTeX source: `paper/main.tex`
-- [x] Bibliography: `paper/references.bib`
-- [x] Result files: `results/metrics.csv`, `results/raw_seed_metrics.csv`, `results/ablation_metrics.csv`, `results/stress_sweep.csv`, `results/negative_cases.csv`
-- [x] Figure/stress data: `figures/stress_curve_data.csv`
+## What Reproduces
+- [x] `python src/run_experiment.py`
+- [x] `results/metrics.csv`
+- [x] `results/raw_seed_metrics.csv`
+- [x] `results/ablation_metrics.csv`
+- [x] `results/stress_sweep.csv`
+- [x] `results/negative_cases.csv`
+- [x] `paper/main.tex`
 - [x] Canonical PDF: `C:/Users/wangz/Downloads/66.pdf`
-- [x] Versioned PDFs are not stored in Downloads.
-- [x] Public GitHub repo: https://github.com/Jason-Wang313/66_visuotactile_world_model_disagreement
+
+## What Does Not Reproduce
+- [ ] Real robot results.
+- [ ] High-fidelity benchmark runs.
+- [ ] Trained WAM checkpoints.
+- [ ] Competing learned baselines.
+
+This is reproducible as an archive memo and synthetic stress test, not as an ICLR-main robotics system paper.

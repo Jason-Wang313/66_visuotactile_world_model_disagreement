@@ -1,12 +1,19 @@
 # Experiment Rigor Checklist
 
-- [x] Multiple random seeds.
-- [x] Episodes per seed recorded.
-- [x] Stronger non-oracle baselines included.
-- [x] Oracle upper bound included and not treated as a baseline win.
-- [x] Ablations isolate the proposed mechanism.
-- [x] Hidden-mode, embodiment-shift, and combined-stress splits included.
-- [x] Stress sweep exported.
-- [x] Negative cases exported.
-- [x] Confidence intervals reported.
-- [x] Claims narrowed to synthetic diagnostic evidence.
+## v2 Synthetic Rigor
+- [x] Multiple seeds.
+- [x] Error bars.
+- [x] Stronger synthetic baselines.
+- [x] Ablations.
+- [x] Stress tests.
+- [x] Negative cases.
+
+## ICLR Main Bar
+- [ ] Real-robot validation.
+- [ ] High-fidelity simulator benchmark.
+- [ ] Implemented learned model.
+- [ ] Implemented real competing baselines.
+- [ ] Manual related-work synthesis.
+- [ ] Paper-specific qualitative figures.
+
+Decision: fail ICLR main empirical-rigor gate; archive.
