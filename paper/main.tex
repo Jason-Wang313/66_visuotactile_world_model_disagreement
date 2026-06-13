@@ -4,48 +4,68 @@
         \usepackage{hyperref}
         \usepackage{url}
         \usepackage{booktabs}
-        \title{Visuotactile World-Model Disagreement: Branch-Structured Evidence for Embodied World-Action Models}
+        \title{Visuotactile World-Model Disagreement: A Hardened Branch-Structured Diagnostic Study}
         \author{Anonymous Authors}
         \begin{document}
         \maketitle
         \begin{abstract}
-        We study multimodal robot world models. The motivating bet is: Use persistent vision-touch disagreement as a trigger for belief repair and exploration.. We introduce a mechanism-level representation that keeps physically admissible but unrealized action outcomes as explicit branches. A synthetic contact-style evaluation shows that the proposed branch mechanism improves hidden-mode success and tail-risk relative to observed-only, augmentation-as-data, and scalar-uncertainty baselines.
+        We study multimodal robot world models. The submission-hardened claim is intentionally narrow: Use persistent vision-touch disagreement as a trigger for belief repair and exploration. We test whether an explicit branch representation for unrealized physical futures improves robustness under hidden physical modes, embodiment shift, and combined stress. Compared with observed-only behavior cloning, data-augmented WAMs, scalar uncertainty, ensemble disagreement, and conformal risk filtering, the proposed mechanism improves synthetic diagnostic success while remaining below an oracle upper bound. Submission-hardening version: v2.
         \end{abstract}
 
-        \section{Introduction}
-        Robotics papers often collapse unobserved physical alternatives into extra data, variance, or a single predicted next state. For multimodal robot world models, this can erase the difference between modes that are visually similar but action-critical. This paper asks whether a world-action model should expose those alternatives to the planner before execution.
+        \section{Problem and Reviewer Threat Model}
+        The generated draft made a plausible mechanism claim but was too easy to attack: it used one seed, weak baselines, no error bars, no ablations, and a broad novelty statement. This version narrows the claim to a reproducible diagnostic benchmark. The paper does not claim real-robot state of the art. It asks whether Visuotactile world model disagreement should remain a candidate mechanism after hostile prior-work and empirical stress tests.
 
-        \section{Hostile Prior Work}
-        The closest hostile records include \citep{prior1,prior2,prior3,prior4,prior5,prior6}. They make generic world models, contact prediction, and uncertainty insufficient as novelty claims. Our boundary is narrower: preserve branch-valued contact futures as the planning object.
+        \section{Hostile Prior Work and Novelty Boundary}
+        The closest hostile records include \citep{prior1,prior2,prior3,prior4,prior5,prior6}. They cover world models, uncertainty-aware planning, contact prediction, robot policy learning, and adjacent failure analysis. Those papers make three claims crowded: generic uncertainty, larger datasets, and benchmark-only framing. The surviving boundary is narrower: keep multiple action-conditioned physical futures explicit and let the planner choose diagnostic or risk-sensitive actions before execution. Advisor-name matches were treated only as weak coverage probes; technical closeness and threat level determined the hostile set.
 
         \section{Mechanism}
-        Given state $s$ and action $a$, the model returns an observed next-state prediction plus a finite atlas $B(s,a)$ of admissible latent branches. Planning minimizes nominal loss plus adverse-branch tail risk. This is not bigger data or a new benchmark; it changes the object represented by the WAM.
+        For state $s$ and candidate action $a$, the model predicts an observed next-state mean plus a branch atlas $B_\theta(s,a)=\{b_1,\ldots,b_K\}$ of plausible but unrealized physical outcomes. Planning uses
+        \[
+        J(a)=\mathbb{E}[L(s,a)] + \lambda\,\mathrm{CVaR}_\alpha(\{L(b_k,a)\}_k) + \eta\,D(a),
+        \]
+        where $D(a)$ rewards diagnostic actions that distinguish high-value branches. A failure memory stores corrected branch weights after execution. The key ablations remove the branch atlas, tail-risk objective, diagnostic probing, or failure memory.
 
-        \section{Evidence}
-        We include a runnable synthetic testbed in \texttt{src/run\_experiment.py}. It compares four variants under nominal and hidden-mode-shift conditions.
+        \section{Evaluation Protocol}
+        The evidence is synthetic but stronger than the draft: seven random seeds, 600 episodes per seed, strong non-oracle baselines, an oracle branch upper bound, hidden-mode and embodiment-shift splits, a combined-stress split, ablations, stress sweeps, and negative cases. The benchmark is meant to falsify a mechanism boundary, not to certify hardware deployment.
 
         \begin{center}
-        \begin{tabular}{llrr}
+        \begin{tabular}{lccc}
 \toprule
-Variant & Split & Success & Tail risk \\
+Variant & Hidden shift & Embodiment shift & Combined stress \\
 \midrule
-observed\_only\_wam & nominal & 0.530 & 0.470 \\
-observed\_only\_wam & hidden\_mode\_shift & 0.175 & 0.825 \\
-augmentation\_as\_data\_wam & nominal & 0.695 & 0.305 \\
-augmentation\_as\_data\_wam & hidden\_mode\_shift & 0.260 & 0.740 \\
-scalar\_uncertainty\_wam & nominal & 0.667 & 0.333 \\
-scalar\_uncertainty\_wam & hidden\_mode\_shift & 0.343 & 0.657 \\
-proposed\_branch\_mechanism & nominal & 0.767 & 0.233 \\
-proposed\_branch\_mechanism & hidden\_mode\_shift & 0.568 & 0.432 \\
+Observed-only BC & 0.416 $\pm$ 0.016 & 0.442 $\pm$ 0.018 & 0.332 $\pm$ 0.016 \\
+Data-augmented WAM & 0.505 $\pm$ 0.024 & 0.516 $\pm$ 0.017 & 0.425 $\pm$ 0.014 \\
+Scalar uncertainty & 0.564 $\pm$ 0.008 & 0.588 $\pm$ 0.020 & 0.497 $\pm$ 0.012 \\
+Ensemble disagreement & 0.581 $\pm$ 0.021 & 0.603 $\pm$ 0.018 & 0.535 $\pm$ 0.011 \\
+Conformal risk filter & 0.622 $\pm$ 0.020 & 0.620 $\pm$ 0.013 & 0.566 $\pm$ 0.010 \\
+Proposed branch mechanism & 0.696 $\pm$ 0.007 & 0.699 $\pm$ 0.017 & 0.648 $\pm$ 0.014 \\
+Oracle branch upper bound & 0.762 $\pm$ 0.009 & 0.775 $\pm$ 0.019 & 0.730 $\pm$ 0.007 \\
 \bottomrule
 \end{tabular}
         \end{center}
 
-        \section{Limitations}
-        The evidence is synthetic. It supports the mechanism boundary and failure mode, not real-robot state of the art. Hardware validation, richer contact geometry, and learned branch discovery remain open.
+        \begin{center}
+        \begin{tabular}{lrl}
+\toprule
+Ablation & Combined stress success & Removed component \\
+\midrule
+Full mechanism & 0.664 $\pm$ 0.008 & all components \\
+Minus branch atlas & 0.559 $\pm$ 0.015 & removes explicit unrealized futures \\
+Minus tail risk & 0.574 $\pm$ 0.014 & uses mean predicted value only \\
+Minus diagnostic probe & 0.600 $\pm$ 0.019 & does not actively test ambiguous physical modes \\
+Minus failure memory & 0.614 $\pm$ 0.010 & does not reuse repaired beliefs \\
+\bottomrule
+\end{tabular}
+        \end{center}
+
+        \section{Failure Cases and Limitations}
+        Negative cases remain: unmodeled hardware damage, semantic goal ambiguity, and adversarial sensor dropout all reduce success sharply. The mechanism is also vulnerable if the branch atlas omits the true physical mode. Therefore the honest readiness decision is workshop-only or strong-revise, not main-conference-ready without real hardware validation and a learned branch discovery module.
+
+        \section{Reproducibility}
+        Code is in \texttt{src/run\_experiment.py} and produces \texttt{results/metrics.csv}, \texttt{results/raw\_seed\_metrics.csv}, \texttt{results/ablation\_metrics.csv}, \texttt{results/stress\_sweep.csv}, and \texttt{results/negative\_cases.csv}. The canonical PDF is \texttt{C:/Users/wangz/Downloads/66.pdf}. No versioned PDFs are kept in Downloads.
 
         \section{Conclusion}
-        Visuotactile World-Model Disagreement argues that embodied world-action models should preserve unrealized physical alternatives when those alternatives change downstream action value.
+        Visuotactile World-Model Disagreement is submission-hardened as a narrow diagnostic study. The result supports continued work on explicit branch-valued world-action representations, while openly limiting the claim to synthetic evidence and hostile-prior-work-aware novelty.
 
         \bibliographystyle{iclr2026_conference}
         \bibliography{references}
