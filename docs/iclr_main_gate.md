@@ -6,14 +6,13 @@ Existing v2 decision: KILL_ARCHIVE
 
 Gate verdict: KILL_ARCHIVE
 
-Evidence digest: 9bb2485690ec5724
+Evidence digest: 69ecbf6c3ea41fb3
 
 Fatal blockers:
-- Synthetic-only evidence.
-- Template-generated experiment and writing.
-- No real robot or high-fidelity benchmark.
+- Proposed method is worse than `ensemble_uncertainty_mpc` and `mean_fusion_mpc` on the combined MuJoCo shift.
+- No-branch, no-disagreement-trigger, no-risk-penalty, and no-tactile-residual ablations match or beat the full method.
+- No real-robot validation or public benchmark replication.
 - No trained WAM/model checkpoint.
-- No implemented real baselines.
 - No manual exhaustive related-work synthesis.
 
-The only honest main-conference-safe decision is to archive rather than overclaim.
+Real high-fidelity evidence now exists, but it supports archive rather than submission.

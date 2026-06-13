@@ -1,16 +1,35 @@
-Submission-hardening experiment for paper 66 visuotactile_world_model_disagreement
-Seven seeds, 600 episodes per seed, strong baselines, ablations, stress sweep, and negative cases.
-observed_only_behavior_clone hidden_mode_shift mean_success=0.4159 ci95=0.0163 tail=0.5841
-observed_only_behavior_clone combined_stress mean_success=0.3324 ci95=0.0161 tail=0.6676
-data_augmentation_wam hidden_mode_shift mean_success=0.5048 ci95=0.0238 tail=0.4952
-data_augmentation_wam combined_stress mean_success=0.4248 ci95=0.0140 tail=0.5752
-scalar_uncertainty_planner hidden_mode_shift mean_success=0.5640 ci95=0.0080 tail=0.4360
-scalar_uncertainty_planner combined_stress mean_success=0.4972 ci95=0.0122 tail=0.5028
-ensemble_disagreement_planner hidden_mode_shift mean_success=0.5810 ci95=0.0206 tail=0.4190
-ensemble_disagreement_planner combined_stress mean_success=0.5347 ci95=0.0113 tail=0.4653
-conformal_risk_filter hidden_mode_shift mean_success=0.6222 ci95=0.0198 tail=0.3778
-conformal_risk_filter combined_stress mean_success=0.5659 ci95=0.0103 tail=0.4341
-proposed_branch_mechanism hidden_mode_shift mean_success=0.6959 ci95=0.0075 tail=0.3041
-proposed_branch_mechanism combined_stress mean_success=0.6476 ci95=0.0138 tail=0.3524
-oracle_branch_upper_bound hidden_mode_shift mean_success=0.7619 ci95=0.0093 tail=0.2381
-oracle_branch_upper_bound combined_stress mean_success=0.7302 ci95=0.0075 tail=0.2698
+Paper 66 real MuJoCo visuotactile world-model disagreement rebuild
+Seeds: [0, 1, 2, 3, 4]; episodes per seed: 12; workers: 4
+Main rows: 3780; ablation rows: 420; stress rows: 1200
+Terminal decision: KILL_ARCHIVE
+Terminal reason: no-branch ablation matches the full method
+
+Combined-shift main results:
+- random_push: success=0.0833 ci95=0.0705 error=0.1505 energy=0.4151 violation=0.0000
+- vision_only_mpc: success=0.5500 ci95=0.1269 error=0.0732 energy=0.5270 violation=0.0000
+- tactile_only_mpc: success=0.6333 ci95=0.1230 error=0.0738 energy=0.5006 violation=0.0000
+- mean_fusion_mpc: success=0.6667 ci95=0.1203 error=0.0642 energy=0.5015 violation=0.0000
+- ensemble_uncertainty_mpc: success=0.7333 ci95=0.1128 error=0.0637 energy=0.5131 violation=0.0000
+- conformal_risk_filter: success=0.5833 ci95=0.1258 error=0.0770 energy=0.4827 violation=0.0000
+- diagnostic_probe_then_mpc: success=0.6333 ci95=0.1230 error=0.0701 energy=0.6008 violation=0.0000
+- vt_disagreement_branch_mpc: success=0.4500 ci95=0.1269 error=0.0943 energy=0.5637 violation=0.0000
+- oracle_mode_mpc: success=0.8000 ci95=0.1021 error=0.0522 energy=0.5539 violation=0.0000
+
+Combined-shift ablations:
+- full_vt_disagreement_branch_mpc: success=0.5000 ci95=0.1276 energy=0.5324
+- no_branch_preservation: success=0.5167 ci95=0.1275 energy=0.5470
+- no_diagnostic_value: success=0.5500 ci95=0.1269 energy=0.4812
+- no_disagreement_trigger: success=0.5833 ci95=0.1258 energy=0.4960
+- no_risk_penalty: success=0.6000 ci95=0.1250 energy=0.5229
+- no_tactile_residual_update: success=0.7667 ci95=0.1079 energy=0.5188
+- small_branch_set: success=0.5000 ci95=0.1276 energy=0.5271
+
+Pairwise combined-shift comparisons vs vt_disagreement_branch_mpc:
+- random_push: diff=0.3667 t=3.4155 p=0.0006
+- vision_only_mpc: diff=-0.1000 t=-0.6203 p=0.5351
+- tactile_only_mpc: diff=-0.1833 t=-1.3289 p=0.1839
+- mean_fusion_mpc: diff=-0.2166 t=-2.6537 p=0.0080
+- ensemble_uncertainty_mpc: diff=-0.2833 t=-2.6391 p=0.0083
+- conformal_risk_filter: diff=-0.1333 t=-1.2058 p=0.2279
+- diagnostic_probe_then_mpc: diff=-0.1833 t=-1.3292 p=0.1838
+- oracle_mode_mpc: diff=-0.3500 t=-3.7716 p=0.0002
