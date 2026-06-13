@@ -1,4 +1,4 @@
-case,expected_behavior,observed_success,lesson
-unmodeled_hardware_damage,planner abstains or requests human inspection,0.18,branch semantics cannot repair missing actuation
-semantic_goal_ambiguity,diagnostic physical probes do not solve language ambiguity,0.31,needs a separate instruction-grounding loop
-adversarial_sensor_dropout,tail-risk objective becomes conservative,0.39,sensor-health modeling is out of scope
+case,expected_behavior,observed_failure_mode,submission_implication
+adversarial_vision_and_tactile_corruption,branch planner should abstain or probe more,"if both modalities are corrupted consistently, disagreement can be low and all planners over-trust the false state",requires sensor-health model before ICLR-main deployment claims
+unmodeled_actuator_weakness,tactile residual should reveal weak pushes,"world-state branches do not represent actuation loss, so the planner compensates too late",needs actuator-mode branches or hardware checks
+semantic_target_ambiguity,physical probing should not solve language ambiguity,all visuotactile methods can push the wrong object/target if the goal is ambiguous,scope must be physical-state uncertainty only

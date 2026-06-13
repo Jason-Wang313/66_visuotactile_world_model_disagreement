@@ -1,0 +1,9 @@
+split,baseline,mean_success_diff_vs_vt,paired_t_approx,normal_approx_p,seeds
+combined_shift,random_push,0.3667,3.4155,0.0006,5
+combined_shift,vision_only_mpc,-0.1000,-0.6203,0.5351,5
+combined_shift,tactile_only_mpc,-0.1833,-1.3289,0.1839,5
+combined_shift,mean_fusion_mpc,-0.2166,-2.6537,0.0080,5
+combined_shift,ensemble_uncertainty_mpc,-0.2833,-2.6391,0.0083,5
+combined_shift,conformal_risk_filter,-0.1333,-1.2058,0.2279,5
+combined_shift,diagnostic_probe_then_mpc,-0.1833,-1.3292,0.1838,5
+combined_shift,oracle_mode_mpc,-0.3500,-3.7716,0.0002,5

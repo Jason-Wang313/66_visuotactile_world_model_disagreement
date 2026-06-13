@@ -10,10 +10,11 @@
 
 ## ICLR Main Bar
 - [ ] Real-robot validation.
-- [ ] High-fidelity simulator benchmark.
+- [x] High-fidelity simulator benchmark.
 - [ ] Implemented learned model.
-- [ ] Implemented real competing baselines.
+- [x] Implemented real competing baselines.
 - [ ] Manual related-work synthesis.
-- [ ] Paper-specific qualitative figures.
+- [x] Paper-specific empirical figures.
+- [x] Multiple seeds, uncertainty, ablations, stress sweep, pairwise comparisons, and negative cases.
 
-Decision: fail ICLR main empirical-rigor gate; archive.
+Decision: fail ICLR main empirical-rigor gate for a stronger reason than v3. Real MuJoCo evidence now exists, but it falsifies the mechanism because branch preservation is not better than mean fusion, ensemble uncertainty, or no-branch/no-disagreement ablations.
