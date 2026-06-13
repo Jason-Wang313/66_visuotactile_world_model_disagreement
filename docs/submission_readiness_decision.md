@@ -1,9 +1,11 @@
 # Submission Readiness Decision
 
-Decision: WORKSHOP_ONLY
+Decision: KILL_ARCHIVE
 
-Reason: Synthetic evidence is now multi-seed and reviewer-resistant, but real-robot validation is still absent.
+ICLR main-conference readiness: NO.
 
-Submit if the target is a workshop, project report, or internal prior-work stress test. Do not submit as a main-conference empirical robotics paper without real-robot or high-fidelity simulator validation.
+Reason: The strongest locally available evidence is synthetic and template-generated. The paper lacks real-robot or high-fidelity simulator validation, implemented learned baselines, manual full-paper related-work depth, and paper-specific empirical figures. These are not recoverable without new external experiments or a substantially new research project.
 
-Honest strongest claim: `Use persistent vision-touch disagreement as a trigger for belief repair and exploration.` is a plausible branch-structured mechanism for multimodal robot world models, supported by synthetic multi-seed diagnostic evidence and hostile-prior-work-aware positioning.
+Honest terminal action: archive/kill for ICLR main. Do not submit this paper to ICLR main in its current form.
+
+Revival condition: rebuild as a real empirical robotics paper with implemented model, strong real baselines, manual related work, and deployment evidence.
