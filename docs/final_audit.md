@@ -7,6 +7,7 @@
 5. Closest hostile prior work: see `docs/hostile_prior_work.md`, `docs/hostile_prior_work_100_cards.csv`, and `docs/hostile_reviewer_response.md`.
 6. Reproducibility: `python src\run_experiment.py` reproduces the MuJoCo benchmark, CSVs, figures, ablations, pairwise stats, stress sweep, and negative cases.
 7. Claim-validity status: main-conference claims killed by direct empirical evidence; archive retained as a negative result.
-8. Exact Downloads PDF path: `C:/Users/wangz/Downloads/66.pdf`
-9. GitHub URL: https://github.com/Jason-Wang313/66_visuotactile_world_model_disagreement
-10. Confirmation: no visible Desktop copy was requested or made.
+8. 2026-06-15 continuation audit: code compilation, CSV finite/schema checks, BibTeX/PDF rebuild, Downloads-only PDF placement, and hostile-review documentation checks passed; terminal decision remains `KILL_ARCHIVE`.
+9. Exact Downloads PDF path: `C:/Users/wangz/Downloads/66.pdf`
+10. GitHub URL: https://github.com/Jason-Wang313/66_visuotactile_world_model_disagreement
+11. Confirmation: no visible Desktop copy was requested or made.
