@@ -1,11 +1,20 @@
 # Submission Readiness Decision
 
-Decision: KILL_ARCHIVE
+Decision: `KILL_ARCHIVE`
 
-ICLR main-conference readiness: NO.
+ICLR main-conference readiness: no.
 
-Reason: v4 adds a real MuJoCo contact-manipulation benchmark, but the evidence is negative. The proposed visuotactile branch planner is worse than mean fusion and ensemble uncertainty on combined shift, and ablations that remove the claimed branch mechanism match or beat the full method.
+Reason: the expanded v5 MuJoCo rebuild gives the idea a stronger calibrated implementation, but the frozen evidence is still negative. CVTB-MPC is matched or beaten by strong baselines in aggregate and on hostile splits. Its no-probe variant ties the full method, and mechanism ablations without sensor-health, reliability fallback, CVaR tail, or mean-only fusion match or beat CVTB-MPC on the pre-registered hostile splits.
+
+Evidence scale:
+
+- Main raw rows: 24,960.
+- Ablation raw rows: 8,640.
+- Stress rows: 3,456.
+- Seed summaries: 1,040.
+- Paired comparisons: 120.
+- Final PDF: 28 pages at `C:\Users\wangz\Downloads\66.pdf`.
 
 Honest terminal action: archive/kill for ICLR main. Do not submit this paper to ICLR main in its current form.
 
-Revival condition: invent and test a substantially different mechanism that clears ensemble uncertainty, mean fusion, diagnostic probing, and no-branch ablations on real robot or public high-fidelity benchmarks.
+Revival condition: develop a substantially different mechanism and freeze a new protocol that clears mean fusion, ensemble uncertainty, robust minimax, particle belief, diagnostic probing, no-probe, no-sensor-health, no-VOI, and no-tail-risk ablations on a public benchmark or real-robot validation setting.

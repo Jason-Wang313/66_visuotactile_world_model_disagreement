@@ -2,50 +2,56 @@
 
 Decision: `KILL_ARCHIVE`
 
-## Real-Evidence Rebuild
-The v4 rebuild replaces the synthetic scaffold with a MuJoCo planar contact-manipulation benchmark. Each episode executes real contact rollouts for a pusher, object, tactile probe, and final push under hidden physical modes.
+Date: 2026-06-20
 
-Run command:
+## Expanded Real-Evidence Rebuild
+
+The v5 rebuild tests Calibrated Visuotactile Branch-and-Probe MPC (CVTB-MPC) in a MuJoCo planar contact-manipulation benchmark. It extends the old branch-preservation mechanism with sensor-health branches, value-of-information probe gating, CVaR-style tail scoring, contact-safety penalties, and conservative fallback under suspected sensor corruption.
+
+Frozen command:
 
 ```powershell
-python src\run_experiment.py
+python src\run_experiment.py --seeds 8 --episodes 24 --ablation-episodes 24 --stress-episodes 12 --splits nominal high_friction low_friction vision_bias tactile_noise sticky_contact combined_shift sensor_conflict contact_dropout delayed_touch_sticky --ablation-splits combined_shift sensor_conflict delayed_touch_sticky --stress-levels 0.0 0.2 0.4 0.6 0.8 1.0 --workers 4 --results-dir results --figures-dir figures
 ```
 
 Generated evidence:
-- 3,780 main MuJoCo episode rows.
-- 420 ablation rows.
-- 1,200 stress-sweep rows.
-- 5 seeds, 12 main episodes per seed, 7 splits, 9 main methods.
+
+- 24,960 main MuJoCo episode-method rows.
+- 8,640 ablation rows.
+- 3,456 stress-sweep rows.
+- 8 seeds, 24 main episodes per seed/split/method, 10 main splits, 13 main methods.
+- 1,040 seed summaries and 120 paired comparisons.
 - CSVs: raw rollouts, metrics, seed metrics, pairwise comparisons, ablations, stress sweep, negative cases.
 - Figures: success by split, energy by split, ablation success, stress sweep.
+- PDF: 28 pages at `C:\Users\wangz\Downloads\66.pdf`.
 
-## Combined-Shift Results
+## Aggregate Result
 
-| Method | Success | CI95 | Error | Energy |
-|---|---:|---:|---:|---:|
-| `random_push` | 0.083 | 0.071 | 0.151 | 0.415 |
-| `vision_only_mpc` | 0.550 | 0.127 | 0.073 | 0.527 |
-| `tactile_only_mpc` | 0.633 | 0.123 | 0.074 | 0.501 |
-| `mean_fusion_mpc` | 0.667 | 0.120 | 0.064 | 0.502 |
-| `ensemble_uncertainty_mpc` | 0.733 | 0.113 | 0.064 | 0.513 |
-| `conformal_risk_filter` | 0.583 | 0.126 | 0.077 | 0.483 |
-| `diagnostic_probe_then_mpc` | 0.633 | 0.123 | 0.070 | 0.601 |
-| `vt_disagreement_branch_mpc` | 0.450 | 0.127 | 0.094 | 0.564 |
-| `oracle_mode_mpc` | 0.800 | 0.102 | 0.052 | 0.554 |
-
-Pairwise combined-shift comparisons show `vt_disagreement_branch_mpc` is below mean fusion by 0.217 success and below ensemble uncertainty by 0.283 success.
-
-## Ablation Results
-
-| Ablation | Success | CI95 | Energy |
+| Method | Aggregate success | Aggregate error | Aggregate energy |
 |---|---:|---:|---:|
-| `full_vt_disagreement_branch_mpc` | 0.500 | 0.128 | 0.532 |
-| `no_branch_preservation` | 0.517 | 0.128 | 0.547 |
-| `no_diagnostic_value` | 0.550 | 0.127 | 0.481 |
-| `no_disagreement_trigger` | 0.583 | 0.126 | 0.496 |
-| `no_risk_penalty` | 0.600 | 0.125 | 0.523 |
-| `no_tactile_residual_update` | 0.767 | 0.108 | 0.519 |
-| `small_branch_set` | 0.500 | 0.128 | 0.527 |
+| `mean_fusion_mpc` | 0.796 | 0.052 | 0.492 |
+| `particle_belief_mpc` | 0.790 | 0.053 | 0.491 |
+| `robust_minimax_mpc` | 0.784 | 0.059 | 0.522 |
+| `ensemble_uncertainty_mpc` | 0.778 | 0.055 | 0.489 |
+| `cvtb_mpc_v5` | 0.777 | 0.056 | 0.487 |
+| `cvtb_no_probe` | 0.777 | 0.056 | 0.487 |
+| `old_vt_disagreement_branch_mpc` | 0.752 | 0.058 | 0.513 |
+| `oracle_mode_mpc` | 0.908 | 0.040 | 0.520 |
+
+## Hostile-Split Failures
+
+- `combined_shift`: CVTB-MPC success 0.5469; vision-only 0.6094; robust minimax 0.5833; mean fusion 0.5729; particle belief 0.5729.
+- `sensor_conflict`: CVTB-MPC success 0.3125; vision-only 0.3802; mean fusion 0.3750; particle belief 0.3438.
+- `contact_dropout`: CVTB-MPC success 0.8385; vision-only 0.9271; mean fusion 0.9115; particle belief 0.8906.
+- `delayed_touch_sticky`: CVTB-MPC success 0.6250; robust minimax 0.6458; old VT 0.6406; mean fusion and ensemble 0.6354.
+
+## Ablation Failures
+
+- `cvtb_no_probe` ties CVTB-MPC on all three pre-registered ablation splits.
+- On `combined_shift`, `mean_only_fusion`, `no_sensor_health`, `tactile_trust_high`, and `small_branch_set` beat CVTB-MPC.
+- On `sensor_conflict`, `mean_only_fusion`, `no_branch_preservation`, and `no_reliability_fallback` beat CVTB-MPC.
+- On `delayed_touch_sticky`, robust minimax, old VT, ensemble uncertainty, `no_sensor_health`, and `no_reliability_fallback` beat or match CVTB-MPC.
 
 ## Terminal Rationale
-The central claim requires branch-preserving visuotactile disagreement to beat branch-collapsing and uncertainty-based alternatives. It does not. Strong non-oracle baselines outperform it, and ablations without the claimed mechanism match or beat the full method. The honest action is `KILL_ARCHIVE`.
+
+The central claim requires calibrated branch-and-probe planning to beat branch-collapsing, robust, belief-space, and no-mechanism alternatives under hidden visuotactile shifts. It does not. Strong baselines match or beat CVTB-MPC, and ablations without the claimed mechanisms match or beat the full method. The honest action is `KILL_ARCHIVE`.

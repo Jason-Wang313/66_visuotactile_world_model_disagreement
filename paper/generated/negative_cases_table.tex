@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\caption{Pre-registered limitations and negative cases.}
+\label{tab:negative-cases}
+\small
+\begin{tabular}{p{0.27\linewidth}p{0.35\linewidth}p{0.28\linewidth}}
+\toprule
+Case & Observed failure mode & Submission implication \\
+\midrule
+adversarial vision and tactile corruption & if both modalities are corrupted consistently, disagreement can be low and all planners over-trust the false state & requires sensor-health model before ICLR-main deployment claims \\
+unmodeled actuator weakness & world-state branches do not represent actuation loss, so the planner compensates too late & needs actuator-mode branches or hardware checks \\
+semantic target ambiguity & all visuotactile methods can push the wrong object/target if the goal is ambiguous & scope must be physical-state uncertainty only \\
+\bottomrule
+\end{tabular}
+\end{table}

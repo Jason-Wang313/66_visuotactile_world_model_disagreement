@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\caption{Split-level success for strong baselines, the old branch planner, CVTB-MPC, its no-probe variant, and the oracle.}
+\label{tab:selected-splits}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Split & Vision & Mean & Ensemble & Robust & Particle & Old VT & CVTB & No-probe & Oracle \\
+\midrule
+combined\_shift & 0.609 & 0.573 & 0.542 & 0.583 & 0.573 & 0.495 & 0.547 & 0.547 & 0.859 \\
+contact\_dropout & 0.927 & 0.911 & 0.849 & 0.875 & 0.891 & 0.802 & 0.839 & 0.839 & 0.948 \\
+delayed\_touch\_sticky & 0.620 & 0.635 & 0.635 & 0.646 & 0.630 & 0.641 & 0.625 & 0.625 & 0.922 \\
+high\_friction & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 \\
+low\_friction & 1.000 & 1.000 & 1.000 & 0.974 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 \\
+nominal & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 \\
+sensor\_conflict & 0.380 & 0.375 & 0.318 & 0.323 & 0.344 & 0.286 & 0.312 & 0.312 & 0.578 \\
+sticky\_contact & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 0.995 & 1.000 & 1.000 & 1.000 \\
+tactile\_noise & 1.000 & 0.995 & 0.964 & 1.000 & 0.990 & 0.839 & 0.974 & 0.974 & 0.969 \\
+vision\_bias & 0.474 & 0.474 & 0.474 & 0.438 & 0.469 & 0.464 & 0.469 & 0.469 & 0.807 \\
+\bottomrule
+\end{tabular}
+\end{table}

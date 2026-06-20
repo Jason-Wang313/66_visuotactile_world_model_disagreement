@@ -1,6 +1,7 @@
 import csv
 import math
 import os
+import argparse
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,10 +15,10 @@ import numpy as np
 
 
 BASE_SEED = 231575465
-SEEDS = [0, 1, 2, 3, 4]
-EPISODES_PER_SEED = 12
-ABLATION_EPISODES_PER_SEED = 12
-STRESS_EPISODES_PER_SEED = 8
+DEFAULT_SEED_COUNT = 8
+DEFAULT_EPISODES_PER_SEED = 24
+DEFAULT_ABLATION_EPISODES_PER_SEED = 24
+DEFAULT_STRESS_EPISODES_PER_SEED = 12
 MAX_WORKERS = max(1, min(4, int(os.environ.get("PAPER66_WORKERS", "4"))))
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,18 +41,30 @@ METHODS = [
     "ensemble_uncertainty_mpc",
     "conformal_risk_filter",
     "diagnostic_probe_then_mpc",
-    "vt_disagreement_branch_mpc",
+    "robust_minimax_mpc",
+    "particle_belief_mpc",
+    "old_vt_disagreement_branch_mpc",
+    "cvtb_mpc_v5",
+    "cvtb_no_probe",
     "oracle_mode_mpc",
 ]
 
 ABLATIONS = [
-    "full_vt_disagreement_branch_mpc",
+    "cvtb_mpc_v5",
+    "cvtb_no_probe",
+    "no_sensor_health",
     "no_branch_preservation",
-    "no_disagreement_trigger",
-    "no_diagnostic_value",
-    "no_tactile_residual_update",
-    "no_risk_penalty",
+    "no_value_of_information",
+    "no_cvar_tail",
+    "no_contact_safety",
+    "no_reliability_fallback",
+    "mean_only_fusion",
+    "tactile_trust_high",
     "small_branch_set",
+    "old_vt_disagreement_branch_mpc",
+    "ensemble_uncertainty_mpc",
+    "robust_minimax_mpc",
+    "oracle_mode_mpc",
 ]
 
 MAIN_SPLITS = [
@@ -62,6 +75,9 @@ MAIN_SPLITS = [
     "tactile_noise",
     "sticky_contact",
     "combined_shift",
+    "sensor_conflict",
+    "contact_dropout",
+    "delayed_touch_sticky",
 ]
 
 
@@ -113,6 +129,7 @@ def normal_p_from_t(t_stat: float) -> float:
 
 def mode_config(split: str, rng: np.random.Generator) -> dict:
     bias_dir = unit(rng.normal(0.0, 1.0, size=2))
+    tactile_bias_dir = unit(rng.normal(0.0, 1.0, size=2))
     configs = {
         "nominal": dict(friction=0.55, drag=0.995, vision_bias=0.0, vision_noise=0.006, tactile_noise=0.006, actuator_scale=1.00),
         "high_friction": dict(friction=1.25, drag=0.985, vision_bias=0.0, vision_noise=0.006, tactile_noise=0.008, actuator_scale=0.96),
@@ -121,15 +138,22 @@ def mode_config(split: str, rng: np.random.Generator) -> dict:
         "tactile_noise": dict(friction=0.62, drag=0.995, vision_bias=0.0, vision_noise=0.006, tactile_noise=0.040, actuator_scale=1.00),
         "sticky_contact": dict(friction=1.55, drag=0.950, vision_bias=0.010, vision_noise=0.007, tactile_noise=0.010, actuator_scale=0.92),
         "combined_shift": dict(friction=1.35, drag=0.960, vision_bias=0.045, vision_noise=0.010, tactile_noise=0.030, actuator_scale=0.94),
+        "sensor_conflict": dict(friction=0.74, drag=0.985, vision_bias=0.060, vision_noise=0.011, tactile_noise=0.044, tactile_bias=0.055, actuator_scale=0.96, contact_dropout=0.10),
+        "contact_dropout": dict(friction=0.70, drag=0.990, vision_bias=0.025, vision_noise=0.009, tactile_noise=0.020, tactile_bias=0.012, actuator_scale=0.98, contact_dropout=0.45),
+        "delayed_touch_sticky": dict(friction=1.65, drag=0.940, vision_bias=0.040, vision_noise=0.010, tactile_noise=0.028, tactile_bias=0.035, actuator_scale=0.90, tactile_delay=0.70),
     }
     cfg = configs[split].copy()
     cfg["vision_bias_vec"] = bias_dir * cfg.pop("vision_bias")
+    cfg["tactile_bias_vec"] = tactile_bias_dir * cfg.pop("tactile_bias", 0.0)
+    cfg["contact_dropout"] = cfg.get("contact_dropout", 0.0)
+    cfg["tactile_delay"] = cfg.get("tactile_delay", 0.0)
     cfg["split"] = split
     return cfg
 
 
 def stress_config(level: float, rng: np.random.Generator) -> dict:
     bias_dir = unit(rng.normal(0.0, 1.0, size=2))
+    tactile_bias_dir = unit(rng.normal(0.0, 1.0, size=2))
     return {
         "split": f"stress_{level:.2f}",
         "friction": 0.55 + 0.85 * level,
@@ -138,6 +162,9 @@ def stress_config(level: float, rng: np.random.Generator) -> dict:
         "tactile_noise": 0.006 + 0.030 * level,
         "actuator_scale": 1.0 - 0.07 * level,
         "vision_bias_vec": bias_dir * (0.055 * level),
+        "tactile_bias_vec": tactile_bias_dir * (0.040 * level),
+        "contact_dropout": 0.18 * level,
+        "tactile_delay": 0.35 * level,
     }
 
 
@@ -271,9 +298,14 @@ def make_episode(seed: int, episode: int, split: str, rng: np.random.Generator) 
     object_pos = rng.uniform([-0.035, -0.075], [0.035, 0.075])
     target_angle = rng.uniform(-0.45, 0.45)
     target_dist = rng.uniform(0.19, 0.30)
+    if split in {"sensor_conflict", "contact_dropout", "delayed_touch_sticky"}:
+        target_angle = rng.uniform(-0.70, 0.70)
+        target_dist = rng.uniform(0.23, 0.34)
     target = object_pos + rotate(np.array([1.0, 0.0]), target_angle) * target_dist
     if split in {"low_friction", "vision_bias"}:
         target[1] += rng.uniform(-0.035, 0.035)
+    if split in {"sensor_conflict", "delayed_touch_sticky"}:
+        target[1] += rng.choice([-1.0, 1.0]) * rng.uniform(0.020, 0.055)
     target[0] = clamp(float(target[0]), 0.12, 0.38)
     target[1] = clamp(float(target[1]), -0.18, 0.18)
     return object_pos.astype(float), target.astype(float)
@@ -294,6 +326,17 @@ def common_probe(cfg: dict, object_pos: np.ndarray, vision_obs: np.ndarray, targ
         tactile_est = tactile_est + rng.normal(0.0, cfg["tactile_noise"], size=2)
         confidence = clamp(0.92 - 10.0 * cfg["tactile_noise"], 0.28, 0.92)
         contact_seen = 1
+
+    if contact_seen and rng.random() < cfg.get("contact_dropout", 0.0):
+        tactile_est = vision_obs + rng.normal(0.0, cfg["tactile_noise"] * 1.6, size=2)
+        confidence *= 0.25
+        contact_seen = 0
+    if contact_seen:
+        tactile_est = tactile_est + cfg.get("tactile_bias_vec", np.zeros(2))
+        delay = cfg.get("tactile_delay", 0.0)
+        if delay > 0.0:
+            tactile_est = tactile_est * (1.0 - delay) + vision_obs * delay
+            confidence *= 1.0 - 0.55 * delay
 
     force_per_step = result.contact_impulse / max(1, result.contact_steps)
     displacement = float(np.linalg.norm(result.final_pos - object_pos))
@@ -327,6 +370,16 @@ def diagnostic_probe(cfg: dict, object_pos: np.ndarray, anchor: np.ndarray, targ
         tactile_est = tactile_est + rng.normal(0.0, cfg["tactile_noise"] * 0.8, size=2)
         confidence = clamp(0.96 - 8.0 * cfg["tactile_noise"], 0.35, 0.96)
         contact_seen = 1
+    if contact_seen and rng.random() < 0.65 * cfg.get("contact_dropout", 0.0):
+        tactile_est = anchor + rng.normal(0.0, cfg["tactile_noise"] * 1.2, size=2)
+        confidence *= 0.30
+        contact_seen = 0
+    if contact_seen:
+        tactile_est = tactile_est + 0.65 * cfg.get("tactile_bias_vec", np.zeros(2))
+        delay = cfg.get("tactile_delay", 0.0)
+        if delay > 0.0:
+            tactile_est = tactile_est * (1.0 - 0.55 * delay) + anchor * (0.55 * delay)
+            confidence *= 1.0 - 0.40 * delay
     force_per_step = result.contact_impulse / max(1, result.contact_steps)
     return {
         "actual_after_probe": result.final_pos,
@@ -342,6 +395,48 @@ def diagnostic_probe(cfg: dict, object_pos: np.ndarray, anchor: np.ndarray, targ
 
 def estimate_friction(obs: dict) -> float:
     return clamp(0.55 + 0.55 * obs["friction_signal"], 0.22, 1.75)
+
+
+def is_cvtb_method(method: str) -> bool:
+    if method in {"cvtb_mpc_v5", "cvtb_no_probe"}:
+        return True
+    if method.startswith("ablation:"):
+        return method.split(":", 1)[1] in {
+            "cvtb_mpc_v5",
+            "cvtb_no_probe",
+            "no_sensor_health",
+            "no_value_of_information",
+            "no_cvar_tail",
+            "no_contact_safety",
+            "no_reliability_fallback",
+            "tactile_trust_high",
+            "small_branch_set",
+        }
+    return False
+
+
+def ablation_name(method: str) -> str | None:
+    return method.split(":", 1)[1] if method.startswith("ablation:") else None
+
+
+def sensor_reliability(obs: dict, method: str) -> tuple[float, float, float]:
+    ablation = ablation_name(method)
+    disagreement = float(obs["disagreement"])
+    tactile_noise = float(obs.get("tactile_noise", 0.0))
+    contact_seen = float(obs["contact_seen"])
+    tactile_conf = float(obs["tactile_confidence"]) if obs["contact_seen"] else 0.08
+    force = float(obs["probe_force"])
+    displacement = float(obs["probe_displacement"])
+    sticky_signal = clamp(force / 520.0 - 3.0 * displacement, 0.0, 1.0)
+    vision_rel = clamp(0.86 - 5.0 * max(0.0, disagreement - 0.018) - 1.5 * float(obs.get("vision_bias_norm", 0.0)), 0.12, 0.92)
+    tactile_rel = clamp(0.12 + 0.72 * contact_seen + 0.40 * tactile_conf - 8.0 * tactile_noise - 0.28 * float(obs.get("contact_dropout_rate", 0.0)), 0.08, 0.94)
+    if ablation == "no_sensor_health":
+        vision_rel = clamp(0.55 + 0.35 * (1.0 - contact_seen), 0.15, 0.90)
+        tactile_rel = clamp(0.55 + 4.0 * disagreement, 0.15, 0.90)
+    if ablation == "tactile_trust_high":
+        tactile_rel = 0.92
+        vision_rel = min(vision_rel, 0.45)
+    return vision_rel, tactile_rel, sticky_signal
 
 
 def make_branches(method: str, obs: dict) -> list[dict]:
@@ -371,6 +466,23 @@ def make_branches(method: str, obs: dict) -> list[dict]:
             dict(state=mean, friction=0.75, weight=0.36, tag="nominal"),
             dict(state=tactile, friction=friction_est, weight=0.40, tag="tactile_friction"),
         ]
+    if method == "robust_minimax_mpc":
+        mean = 0.62 * vision + 0.38 * tactile
+        return [
+            dict(state=vision, friction=0.42, weight=0.20, tag="robust_vision_low"),
+            dict(state=mean, friction=0.78, weight=0.34, tag="robust_mean"),
+            dict(state=tactile, friction=1.35, weight=0.28, tag="robust_tactile_high"),
+            dict(state=mean + unit(target - mean) * 0.020, friction=1.65, weight=0.18, tag="robust_tail"),
+        ]
+    if method == "particle_belief_mpc":
+        mean = 0.50 * vision + 0.50 * tactile
+        return [
+            dict(state=vision, friction=0.45, weight=0.18, tag="particle_v"),
+            dict(state=tactile, friction=friction_est, weight=0.30, tag="particle_t"),
+            dict(state=mean, friction=0.55, weight=0.22, tag="particle_mean"),
+            dict(state=mean + unit(tactile - vision) * min(0.030, disagreement), friction=1.15, weight=0.18, tag="particle_shift"),
+            dict(state=mean - unit(tactile - vision) * min(0.024, disagreement), friction=0.32, weight=0.12, tag="particle_reverse"),
+        ]
     if method == "conformal_risk_filter":
         if disagreement > 0.038 and obs["contact_seen"]:
             state = 0.25 * vision + 0.75 * tactile
@@ -383,14 +495,43 @@ def make_branches(method: str, obs: dict) -> list[dict]:
 
     if method.startswith("ablation:"):
         ablation = method.split(":", 1)[1]
-        if ablation == "no_branch_preservation":
+        if ablation in {"no_branch_preservation", "mean_only_fusion"}:
             state = 0.50 * vision + 0.50 * tactile
             return [dict(state=state, friction=friction_est, weight=1.0, tag="collapsed")]
-        if ablation == "no_tactile_residual_update":
-            return [dict(state=vision, friction=0.55, weight=1.0, tag="no_tactile")]
+
+    if is_cvtb_method(method):
+        ablation = ablation_name(method)
+        vision_rel, tactile_rel, sticky_signal = sensor_reliability(obs, method)
         if ablation == "small_branch_set":
-            state = tactile if tactile_conf > 0.55 else vision
-            return [dict(state=state, friction=friction_est, weight=1.0, tag="small")]
+            state = (vision * vision_rel + tactile * tactile_rel) / max(1e-6, vision_rel + tactile_rel)
+            return [dict(state=state, friction=friction_est, weight=1.0, tag="small_cvtb")]
+        if ablation == "no_branch_preservation":
+            state = (vision * vision_rel + tactile * tactile_rel) / max(1e-6, vision_rel + tactile_rel)
+            return [dict(state=state, friction=friction_est, weight=1.0, tag="no_branch")]
+
+        weights = [
+            max(0.05, vision_rel * (1.0 - 0.45 * sticky_signal)),
+            max(0.05, tactile_rel * (1.0 - 0.35 * float(obs.get("contact_dropout_rate", 0.0)))),
+            max(0.04, 0.22 + 0.62 * sticky_signal),
+            max(0.03, 0.18 + 2.6 * max(0.0, disagreement - 0.045)),
+        ]
+        branches = [
+            dict(state=vision, friction=0.55, weight=weights[0], tag="vision_health"),
+            dict(state=tactile, friction=friction_est, weight=weights[1], tag="tactile_health"),
+            dict(state=tactile, friction=max(1.05, friction_est + 0.25), weight=weights[2], tag="sticky_physical"),
+            dict(state=vision, friction=0.48, weight=weights[3], tag="tactile_fault"),
+        ]
+        if ablation == "no_sensor_health":
+            branches = [
+                dict(state=vision, friction=0.55, weight=0.34, tag="vision_nohealth"),
+                dict(state=tactile, friction=friction_est, weight=0.44, tag="tactile_nohealth"),
+                dict(state=tactile, friction=max(1.05, friction_est), weight=0.22, tag="force_nohealth"),
+            ]
+        s = sum(b["weight"] for b in branches)
+        for branch in branches:
+            branch["weight"] /= s
+            branch["target_dir"] = unit(target - branch["state"])
+        return branches
 
     # Proposed branch mechanism and most ablations keep state alternatives explicit.
     branches = [
@@ -415,12 +556,14 @@ def branch_entropy(branches: list[dict]) -> float:
 def candidate_score(candidate: dict, branches: list[dict], obs: dict, method: str) -> float:
     target = obs["target"]
     risk_weight = 0.035
-    if method in {"conformal_risk_filter", "ensemble_uncertainty_mpc", "vt_disagreement_branch_mpc"}:
+    if method in {"conformal_risk_filter", "ensemble_uncertainty_mpc", "old_vt_disagreement_branch_mpc", "robust_minimax_mpc", "particle_belief_mpc"} or is_cvtb_method(method):
         risk_weight = 0.055
-    if method.startswith("ablation:") and method.endswith("no_risk_penalty"):
+    ablation = ablation_name(method)
+    if ablation == "no_contact_safety":
         risk_weight = 0.0
 
     losses = []
+    unweighted_losses = []
     for branch in branches:
         miss = max(0.0, float(np.linalg.norm(candidate["anchor"] - branch["state"])) - 0.052)
         expected_move = candidate["move"] * (0.92 / (0.72 + 0.34 * branch["friction"]))
@@ -428,16 +571,32 @@ def candidate_score(candidate: dict, branches: list[dict], obs: dict, method: st
         pred = branch["state"] + candidate["direction"] * expected_move
         error = float(np.linalg.norm(pred - target))
         force_risk = branch["friction"] * candidate["move"] + 4.0 * miss
-        losses.append(branch["weight"] * (error + 2.2 * miss + risk_weight * force_risk))
+        raw_loss = error + 2.2 * miss + risk_weight * force_risk
+        unweighted_losses.append(raw_loss)
+        losses.append(branch["weight"] * raw_loss)
 
     variance_penalty = 0.0
-    if method in {"ensemble_uncertainty_mpc", "vt_disagreement_branch_mpc"}:
+    if method in {"ensemble_uncertainty_mpc", "old_vt_disagreement_branch_mpc", "particle_belief_mpc"} or is_cvtb_method(method):
         errs = []
         for branch in branches:
             expected_move = candidate["move"] * (0.92 / (0.72 + 0.34 * branch["friction"]))
             pred = branch["state"] + candidate["direction"] * expected_move
             errs.append(float(np.linalg.norm(pred - target)))
         variance_penalty = 0.22 * float(np.std(errs))
+    if method == "robust_minimax_mpc":
+        return float(max(unweighted_losses) + 0.10 * np.mean(unweighted_losses) + 0.030 * candidate["move"])
+    if is_cvtb_method(method):
+        ordered = sorted(unweighted_losses, reverse=True)
+        k = max(1, int(math.ceil(0.40 * len(ordered))))
+        cvar = float(np.mean(ordered[:k]))
+        cvar_weight = 0.0 if ablation == "no_cvar_tail" else 0.28
+        safety = 0.0 if ablation == "no_contact_safety" else 0.040 * candidate["move"] * (1.0 + float(obs.get("probe_force", 0.0)) / 500.0)
+        fallback_penalty = 0.0
+        if ablation != "no_reliability_fallback":
+            vision_rel, tactile_rel, _ = sensor_reliability(obs, method)
+            low_reliability = max(0.0, 0.42 - max(vision_rel, tactile_rel))
+            fallback_penalty = 0.12 * low_reliability * candidate["move"]
+        return float(sum(losses) + variance_penalty + cvar_weight * cvar + safety + fallback_penalty)
     if method == "conformal_risk_filter" and obs["disagreement"] > 0.045:
         variance_penalty += 0.10 * candidate["move"]
     return float(sum(losses) + variance_penalty)
@@ -458,9 +617,12 @@ def choose_action(method: str, obs: dict, rng: np.random.Generator) -> tuple[np.
     if method == "oracle_mode_mpc":
         anchor_options = [obs["actual_pos"]]
         friction_options = [obs["true_friction"]]
-    elif method == "vt_disagreement_branch_mpc" or method.startswith("ablation:"):
+    elif method in {"old_vt_disagreement_branch_mpc", "robust_minimax_mpc", "particle_belief_mpc"} or is_cvtb_method(method) or method.startswith("ablation:"):
         anchor_options = [b["state"] for b in branches]
-        if method == "ablation:no_disagreement_trigger":
+        if is_cvtb_method(method):
+            mean_anchor = sum(b["weight"] * b["state"] for b in branches)
+            anchor_options.append(mean_anchor)
+        if method == "ablation:no_value_of_information" or method == "ablation:mean_only_fusion":
             anchor_options = [sum(b["weight"] * b["state"] for b in branches)]
         friction_options = [sum(b["weight"] * b["friction"] for b in branches)]
     else:
@@ -485,7 +647,20 @@ def choose_action(method: str, obs: dict, rng: np.random.Generator) -> tuple[np.
     chosen = scored[0][1]
     if method == "conformal_risk_filter" and obs["disagreement"] > 0.050:
         chosen["move"] *= 0.86
-    if method.startswith("ablation:") and method.endswith("no_diagnostic_value"):
+    if method == "cvtb_mpc_v5" or method == "cvtb_no_probe" or is_cvtb_method(method):
+        ablation = ablation_name(method)
+        if ablation != "no_reliability_fallback":
+            vision_rel, tactile_rel, _ = sensor_reliability(obs, method)
+            sensor_fault_risk = (
+                tactile_rel < 0.34
+                or obs.get("contact_dropout_rate", 0.0) > 0.25
+                or (obs["disagreement"] > 0.052 and tactile_rel < vision_rel + 0.08)
+            )
+            if sensor_fault_risk:
+                mean_anchor = 0.64 * obs["vision_obs"] + 0.36 * obs["tactile_est"]
+                direction = unit(obs["target"] - mean_anchor)
+                chosen = {"anchor": mean_anchor, "direction": direction, "move": 0.88 * chosen["move"], "fallback": 1.0}
+    if method.startswith("ablation:") and method.endswith("no_value_of_information"):
         chosen["move"] *= 0.94
 
     start = chosen["anchor"] - chosen["direction"] * CONTACT_GAP
@@ -494,30 +669,63 @@ def choose_action(method: str, obs: dict, rng: np.random.Generator) -> tuple[np.
     chosen["branch_entropy"] = entropy
     chosen["score"] = scored[0][0]
     chosen["note"] = "+".join(b["tag"] for b in branches)
+    chosen["fallback"] = float(chosen.get("fallback", 0.0))
     return start, end, chosen
+
+
+def probe_value_signal(obs: dict, method: str) -> float:
+    branches = make_branches(method, obs)
+    if len(branches) <= 1:
+        return 0.0
+    anchors = np.asarray([b["state"] for b in branches], dtype=float)
+    weights = np.asarray([b["weight"] for b in branches], dtype=float)
+    mean_anchor = np.sum(anchors * weights[:, None], axis=0)
+    branch_spread = float(np.sum(weights * np.linalg.norm(anchors - mean_anchor, axis=1)))
+    entropy = branch_entropy(branches)
+    return float(branch_spread + 0.035 * entropy + 0.55 * max(0.0, obs["disagreement"] - 0.030))
 
 
 def should_run_extra_probe(method: str, obs: dict) -> bool:
     if method == "diagnostic_probe_then_mpc":
         return True
-    if method == "vt_disagreement_branch_mpc":
+    if method == "old_vt_disagreement_branch_mpc":
         return obs["disagreement"] > 0.040 or obs["probe_force"] > 360.0
-    if method == "ablation:no_diagnostic_value":
+    if method == "cvtb_mpc_v5":
+        _, tactile_rel, sticky_signal = sensor_reliability(obs, method)
+        return probe_value_signal(obs, method) > 0.105 and tactile_rel > 0.38 and sticky_signal > 0.20 and obs["probe_force"] < 720.0
+    if method == "cvtb_no_probe":
         return False
     if method.startswith("ablation:"):
-        return obs["disagreement"] > 0.055 and method not in {"ablation:no_disagreement_trigger", "ablation:no_tactile_residual_update"}
+        ablation = method.split(":", 1)[1]
+        if ablation in {"cvtb_no_probe", "no_value_of_information", "mean_only_fusion"}:
+            return False
+        if ablation in {"cvtb_mpc_v5", "no_sensor_health", "no_cvar_tail", "no_contact_safety", "no_reliability_fallback", "tactile_trust_high", "small_branch_set"}:
+            _, tactile_rel, sticky_signal = sensor_reliability(obs, method)
+            return probe_value_signal(obs, method) > 0.105 and tactile_rel > 0.38 and sticky_signal > 0.20 and obs["probe_force"] < 720.0
+        return obs["disagreement"] > 0.055
     return False
 
 
 def run_single_episode(task: tuple) -> dict:
     method, split, seed, episode, stress_level = task
-    salt = stable_int(method) + stable_int(split) * 17 + seed * 1009 + episode * 9176
-    rng = np.random.default_rng(BASE_SEED + salt)
-    cfg = stress_config(stress_level, rng) if stress_level is not None else mode_config(split, rng)
-    object_pos, target = make_episode(seed, episode, split, rng)
-    vision_obs = object_pos + cfg["vision_bias_vec"] + rng.normal(0.0, cfg["vision_noise"], size=2)
+    execution_method = method
+    if method.startswith("ablation:") and ablation_name(method) in {
+        "old_vt_disagreement_branch_mpc",
+        "ensemble_uncertainty_mpc",
+        "robust_minimax_mpc",
+        "oracle_mode_mpc",
+    }:
+        execution_method = ablation_name(method)
+    stress_salt = 0 if stress_level is None else int(round(10000 * stress_level))
+    env_salt = stable_int(split) * 17 + seed * 1009 + episode * 9176 + stress_salt * 31
+    policy_salt = stable_int(method) * 37 + env_salt
+    env_rng = np.random.default_rng(BASE_SEED + env_salt)
+    policy_rng = np.random.default_rng(BASE_SEED + policy_salt)
+    cfg = stress_config(stress_level, env_rng) if stress_level is not None else mode_config(split, env_rng)
+    object_pos, target = make_episode(seed, episode, split, env_rng)
+    vision_obs = object_pos + cfg["vision_bias_vec"] + env_rng.normal(0.0, cfg["vision_noise"], size=2)
 
-    probe = common_probe(cfg, object_pos, vision_obs, target, rng)
+    probe = common_probe(cfg, object_pos, vision_obs, target, env_rng)
     actual_pos = probe["actual_after_probe"]
     obs = {
         "vision_obs": vision_obs,
@@ -531,14 +739,17 @@ def run_single_episode(task: tuple) -> dict:
         "target": target,
         "actual_pos": actual_pos,
         "true_friction": cfg["friction"],
+        "tactile_noise": cfg["tactile_noise"],
+        "vision_bias_norm": float(np.linalg.norm(cfg["vision_bias_vec"])),
+        "contact_dropout_rate": cfg.get("contact_dropout", 0.0),
     }
 
     used_diagnostic = 0
     diagnostic_energy = 0.0
     diagnostic_contact = 0.0
-    if should_run_extra_probe(method, obs):
+    if should_run_extra_probe(execution_method, obs):
         anchor_for_probe = obs["tactile_est"] if obs["contact_seen"] else obs["vision_obs"]
-        dprobe = diagnostic_probe(cfg, actual_pos, anchor_for_probe, target, rng)
+        dprobe = diagnostic_probe(cfg, actual_pos, anchor_for_probe, target, policy_rng)
         actual_pos = dprobe["actual_after_probe"]
         obs["actual_pos"] = actual_pos
         if dprobe["contact_seen"]:
@@ -552,14 +763,7 @@ def run_single_episode(task: tuple) -> dict:
         diagnostic_contact = dprobe["probe_max_contact"]
         used_diagnostic = 1
 
-    if method.startswith("ablation:no_tactile_residual_update"):
-        obs["tactile_est"] = obs["vision_obs"]
-        obs["tactile_confidence"] = 0.0
-        obs["contact_seen"] = 0
-        obs["disagreement"] = 0.0
-        obs["friction_signal"] = 0.5
-
-    start, end, action = choose_action(method, obs, rng)
+    start, end, action = choose_action(execution_method, obs, policy_rng)
     rollout = rollout_push(cfg, actual_pos, start, end, 82)
     final_error = float(np.linalg.norm(rollout.final_pos - target))
     total_energy = probe["probe_energy"] + diagnostic_energy + rollout.pusher_path + 0.0008 * rollout.contact_impulse
@@ -580,6 +784,13 @@ def run_single_episode(task: tuple) -> dict:
         "used_diagnostic": used_diagnostic,
         "disagreement": f"{obs['disagreement']:.5f}",
         "branch_entropy": f"{action['branch_entropy']:.5f}",
+        "probe_value": f"{probe_value_signal(obs, execution_method):.5f}",
+        "fallback_used": f"{float(action.get('fallback', 0.0)):.1f}",
+        "action_move": f"{float(action['move']):.5f}",
+        "action_dir_x": f"{float(action['direction'][0]):.5f}",
+        "action_dir_y": f"{float(action['direction'][1]):.5f}",
+        "action_anchor_x": f"{float(action['anchor'][0]):.5f}",
+        "action_anchor_y": f"{float(action['anchor'][1]):.5f}",
         "object_path": f"{rollout.object_path:.5f}",
         "pusher_path": f"{rollout.pusher_path:.5f}",
         "true_friction": f"{cfg['friction']:.4f}",
@@ -619,6 +830,10 @@ def summarize(rows: list[dict], group_keys: list[str]) -> list[dict]:
         energy_vals = [float(r["energy"]) for r in group]
         violation_vals = [float(r["contact_violation"]) for r in group]
         disagreement_vals = [float(r["disagreement"]) for r in group]
+        entropy_vals = [float(r.get("branch_entropy", 0.0)) for r in group]
+        diagnostic_vals = [float(r.get("used_diagnostic", 0.0)) for r in group]
+        probe_value_vals = [float(r.get("probe_value", 0.0)) for r in group]
+        fallback_vals = [float(r.get("fallback_used", 0.0)) for r in group]
         out = {k: v for k, v in zip(group_keys, key)}
         out.update(
             {
@@ -630,6 +845,10 @@ def summarize(rows: list[dict], group_keys: list[str]) -> list[dict]:
                 "ci95_energy": f"{ci95(energy_vals):.4f}",
                 "mean_contact_violation": f"{float(np.mean(violation_vals)):.4f}",
                 "mean_disagreement": f"{float(np.mean(disagreement_vals)):.4f}",
+                "mean_branch_entropy": f"{float(np.mean(entropy_vals)):.4f}",
+                "diagnostic_rate": f"{float(np.mean(diagnostic_vals)):.4f}",
+                "mean_probe_value": f"{float(np.mean(probe_value_vals)):.4f}",
+                "fallback_rate": f"{float(np.mean(fallback_vals)):.4f}",
                 "episodes": len(group),
                 "seeds": len({r["seed"] for r in group}),
             }
@@ -642,46 +861,64 @@ def seed_metrics(rows: list[dict]) -> list[dict]:
     return summarize(rows, ["method", "split", "seed"])
 
 
-def pairwise_stats(seed_rows: list[dict], split: str = "combined_shift") -> list[dict]:
-    proposed = "vt_disagreement_branch_mpc"
+def paired_ci(values: list[float]) -> float:
+    return ci95(values)
+
+
+def pairwise_stats(raw_rows: list[dict], proposed: str = "cvtb_mpc_v5") -> list[dict]:
     rows = []
-    seed_map = {
-        (r["method"], r["split"], r["seed"]): float(r["mean_success"])
-        for r in seed_rows
-        if r["split"] == split
-    }
-    for method in METHODS:
-        if method == proposed:
-            continue
-        diffs = []
-        for seed in SEEDS:
-            p_key = (proposed, split, seed)
-            b_key = (method, split, seed)
-            if p_key in seed_map and b_key in seed_map:
-                diffs.append(seed_map[p_key] - seed_map[b_key])
-        if not diffs:
-            continue
-        mean_diff = float(np.mean(diffs))
-        sd = float(np.std(diffs, ddof=1)) if len(diffs) > 1 else 0.0
-        t_stat = mean_diff / (sd / math.sqrt(len(diffs)) + 1e-9)
-        rows.append(
-            {
-                "split": split,
-                "baseline": method,
-                "mean_success_diff_vs_vt": f"{mean_diff:.4f}",
-                "paired_t_approx": f"{t_stat:.4f}",
-                "normal_approx_p": f"{normal_p_from_t(t_stat):.4f}",
-                "seeds": len(diffs),
-            }
-        )
+    by_case: dict[tuple, dict[str, dict]] = {}
+    for row in raw_rows:
+        by_case.setdefault((row["split"], row["seed"], row["episode"]), {})[row["method"]] = row
+    splits = sorted({row["split"] for row in raw_rows})
+    for split in splits:
+        cases = [case for key, case in by_case.items() if key[0] == split and proposed in case]
+        for method in METHODS:
+            if method == proposed:
+                continue
+            paired = [(case[proposed], case[method]) for case in cases if method in case]
+            if not paired:
+                continue
+            succ = [float(p["success"]) - float(b["success"]) for p, b in paired]
+            err = [float(b["final_error"]) - float(p["final_error"]) for p, b in paired]
+            energy = [float(b["energy"]) - float(p["energy"]) for p, b in paired]
+            contact = [float(p["contact_violation"]) - float(b["contact_violation"]) for p, b in paired]
+            action_diff = []
+            for p, b in paired:
+                p_dir = np.array([float(p["action_dir_x"]), float(p["action_dir_y"])])
+                b_dir = np.array([float(b["action_dir_x"]), float(b["action_dir_y"])])
+                dir_delta = float(np.linalg.norm(p_dir - b_dir))
+                move_delta = abs(float(p["action_move"]) - float(b["action_move"]))
+                anchor_delta = math.hypot(float(p["action_anchor_x"]) - float(b["action_anchor_x"]), float(p["action_anchor_y"]) - float(b["action_anchor_y"]))
+                action_diff.append(float(dir_delta > 0.10 or move_delta > 0.020 or anchor_delta > 0.020 or p["used_diagnostic"] != b["used_diagnostic"]))
+            mean_diff = float(np.mean(succ))
+            sd = float(np.std(succ, ddof=1)) if len(succ) > 1 else 0.0
+            t_stat = mean_diff / (sd / math.sqrt(len(succ)) + 1e-9)
+            rows.append(
+                {
+                    "split": split,
+                    "baseline": method,
+                    "paired_episodes": len(paired),
+                    "success_delta_mean": f"{mean_diff:.4f}",
+                    "success_delta_ci95": f"{paired_ci(succ):.4f}",
+                    "final_error_improvement_mean": f"{float(np.mean(err)):.4f}",
+                    "final_error_improvement_ci95": f"{paired_ci(err):.4f}",
+                    "energy_improvement_mean": f"{float(np.mean(energy)):.4f}",
+                    "energy_improvement_ci95": f"{paired_ci(energy):.4f}",
+                    "contact_violation_delta_mean": f"{float(np.mean(contact)):.4f}",
+                    "action_diff_rate": f"{float(np.mean(action_diff)):.4f}",
+                    "paired_t_approx": f"{t_stat:.4f}",
+                    "normal_approx_p": f"{normal_p_from_t(t_stat):.4f}",
+                }
+            )
     return rows
 
 
 def plot_success(metrics: list[dict], path: Path) -> None:
-    selected = ["mean_fusion_mpc", "ensemble_uncertainty_mpc", "conformal_risk_filter", "diagnostic_probe_then_mpc", "vt_disagreement_branch_mpc", "oracle_mode_mpc"]
+    selected = ["mean_fusion_mpc", "ensemble_uncertainty_mpc", "robust_minimax_mpc", "particle_belief_mpc", "old_vt_disagreement_branch_mpc", "cvtb_mpc_v5", "oracle_mode_mpc"]
     splits = MAIN_SPLITS
     x = np.arange(len(splits))
-    width = 0.12
+    width = 0.10
     fig, ax = plt.subplots(figsize=(12, 5))
     for idx, method in enumerate(selected):
         vals = []
@@ -701,7 +938,7 @@ def plot_success(metrics: list[dict], path: Path) -> None:
 
 
 def plot_energy(metrics: list[dict], path: Path) -> None:
-    selected = ["mean_fusion_mpc", "diagnostic_probe_then_mpc", "vt_disagreement_branch_mpc", "oracle_mode_mpc"]
+    selected = ["mean_fusion_mpc", "ensemble_uncertainty_mpc", "robust_minimax_mpc", "old_vt_disagreement_branch_mpc", "cvtb_mpc_v5", "oracle_mode_mpc"]
     splits = MAIN_SPLITS
     x = np.arange(len(splits))
     fig, ax = plt.subplots(figsize=(10, 4.8))
@@ -738,7 +975,7 @@ def plot_ablation(metrics: list[dict], path: Path) -> None:
 
 
 def plot_stress(stress_metrics: list[dict], path: Path) -> None:
-    selected = ["mean_fusion_mpc", "ensemble_uncertainty_mpc", "conformal_risk_filter", "diagnostic_probe_then_mpc", "vt_disagreement_branch_mpc"]
+    selected = ["mean_fusion_mpc", "ensemble_uncertainty_mpc", "robust_minimax_mpc", "old_vt_disagreement_branch_mpc", "cvtb_mpc_v5", "oracle_mode_mpc"]
     fig, ax = plt.subplots(figsize=(8.5, 4.8))
     for method in selected:
         xs, ys = [], []
@@ -781,48 +1018,110 @@ def make_negative_cases() -> list[dict]:
     ]
 
 
-def main() -> None:
-    main_tasks = [
-        (method, split, seed, episode, None)
-        for method in METHODS
-        for split in MAIN_SPLITS
-        for seed in SEEDS
-        for episode in range(EPISODES_PER_SEED)
+def terminal_decision(metrics: list[dict], ablation_metrics: list[dict]) -> tuple[str, str]:
+    proposed_name = "cvtb_mpc_v5"
+    by_split_method = {(r["split"], r["method"]): r for r in metrics}
+    aggregates: dict[str, list[dict]] = {}
+    for row in metrics:
+        aggregates.setdefault(row["method"], []).append(row)
+    aggregate_success = {m: float(np.mean([float(r["mean_success"]) for r in rows])) for m, rows in aggregates.items()}
+    aggregate_error = {m: float(np.mean([float(r["mean_final_error"]) for r in rows])) for m, rows in aggregates.items()}
+    proposed_success = aggregate_success.get(proposed_name, 0.0)
+    proposed_error = aggregate_error.get(proposed_name, 9.0)
+    strong = ["mean_fusion_mpc", "ensemble_uncertainty_mpc", "conformal_risk_filter", "diagnostic_probe_then_mpc", "robust_minimax_mpc", "particle_belief_mpc"]
+    strong_failures = [
+        method
+        for method in strong
+        if aggregate_success.get(method, -1.0) > proposed_success + 1e-9 or aggregate_error.get(method, 9.0) < proposed_error - 1e-9
     ]
-    raw_rows = run_tasks(main_tasks)
-    write_csv(RESULTS / "vt_disagreement_raw.csv", raw_rows)
-    write_csv(RESULTS / "raw_seed_metrics.csv", seed_metrics(raw_rows))
+    hostile = ["combined_shift", "sensor_conflict", "contact_dropout", "delayed_touch_sticky"]
+    hostile_failures = []
+    for split in hostile:
+        p = by_split_method.get((split, proposed_name))
+        if not p:
+            continue
+        for method in strong:
+            b = by_split_method.get((split, method))
+            if b and float(b["mean_success"]) > float(p["mean_success"]) + 1e-9:
+                hostile_failures.append(f"{method}@{split}")
+                break
+    ab_by_key = {(r["split"], r["method"]): r for r in ablation_metrics}
+    mechanism_failures = []
+    for split in sorted({r["split"] for r in ablation_metrics}):
+        p = ab_by_key.get((split, proposed_name))
+        if not p:
+            continue
+        for method in ["no_sensor_health", "no_value_of_information", "no_cvar_tail", "no_reliability_fallback", "mean_only_fusion", "old_vt_disagreement_branch_mpc"]:
+            b = ab_by_key.get((split, method))
+            if b and float(b["mean_success"]) >= float(p["mean_success"]) - 1e-9:
+                mechanism_failures.append(f"{method}@{split}")
+    if strong_failures or hostile_failures or mechanism_failures:
+        reason = "strong baselines or ablations match/beat CVTB-MPC: "
+        reason += "; ".join((strong_failures + hostile_failures + mechanism_failures)[:8])
+        return "KILL_ARCHIVE", reason
+    return "STRONG_REVISE", "CVTB-MPC clears local frozen gates but still lacks real robot/public benchmark validation"
+
+
+def run(args: argparse.Namespace) -> None:
+    global RESULTS, FIGURES, MAX_WORKERS
+    RESULTS = Path(args.results_dir)
+    FIGURES = Path(args.figures_dir)
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    FIGURES.mkdir(parents=True, exist_ok=True)
+    MAX_WORKERS = args.workers
+    seeds = list(range(args.seeds))
+
+    raw_rows: list[dict] = []
+    for split in args.splits:
+        tasks = [
+            (method, split, seed, episode, None)
+            for method in METHODS
+            for seed in seeds
+            for episode in range(args.episodes)
+        ]
+        raw_rows.extend(run_tasks(tasks))
+        write_csv(RESULTS / "vt_disagreement_raw.partial.csv", raw_rows)
+        write_csv(RESULTS / "vt_disagreement_metrics.partial.csv", summarize(raw_rows, ["method", "split"]))
+        print(f"completed main split={split} rows={len(raw_rows)}", flush=True)
+
+    seed_rows = seed_metrics(raw_rows)
     metrics = summarize(raw_rows, ["method", "split"])
+    pairwise = pairwise_stats(raw_rows)
+    write_csv(RESULTS / "vt_disagreement_raw.csv", raw_rows)
+    write_csv(RESULTS / "raw_seed_metrics.csv", seed_rows)
     write_csv(RESULTS / "vt_disagreement_metrics.csv", metrics)
     write_csv(RESULTS / "metrics.csv", metrics)
-    seed_rows = seed_metrics(raw_rows)
-    pairwise = pairwise_stats(seed_rows)
     write_csv(RESULTS / "vt_disagreement_pairwise.csv", pairwise)
     write_csv(RESULTS / "pairwise_stats.csv", pairwise)
 
-    ablation_tasks = [
-        (f"ablation:{ablation}", "combined_shift", seed, episode, None)
-        for ablation in ABLATIONS
-        for seed in SEEDS
-        for episode in range(ABLATION_EPISODES_PER_SEED)
-    ]
-    ablation_rows = run_tasks(ablation_tasks)
-    write_csv(RESULTS / "vt_disagreement_ablation_raw.csv", ablation_rows)
+    ablation_rows: list[dict] = []
+    for split in args.ablation_splits:
+        tasks = [
+            (f"ablation:{ablation}", split, seed, episode, None)
+            for ablation in ABLATIONS
+            for seed in seeds
+            for episode in range(args.ablation_episodes)
+        ]
+        ablation_rows.extend(run_tasks(tasks))
+        write_csv(RESULTS / "vt_disagreement_ablation_raw.partial.csv", ablation_rows)
+        write_csv(RESULTS / "vt_disagreement_ablation.partial.csv", summarize(ablation_rows, ["method", "split"]))
+        print(f"completed ablation split={split} rows={len(ablation_rows)}", flush=True)
     ablation_metrics = summarize(ablation_rows, ["method", "split"])
+    write_csv(RESULTS / "vt_disagreement_ablation_raw.csv", ablation_rows)
     write_csv(RESULTS / "vt_disagreement_ablation.csv", ablation_metrics)
     write_csv(RESULTS / "ablation_metrics.csv", ablation_metrics)
 
-    stress_levels = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    stress_methods = ["mean_fusion_mpc", "ensemble_uncertainty_mpc", "conformal_risk_filter", "diagnostic_probe_then_mpc", "vt_disagreement_branch_mpc"]
-    stress_tasks = [
-        (method, "stress_sweep", seed, episode, level)
-        for method in stress_methods
-        for level in stress_levels
-        for seed in SEEDS
-        for episode in range(STRESS_EPISODES_PER_SEED)
-    ]
-    stress_rows = run_tasks(stress_tasks)
-    stress_metrics = summarize(stress_rows, ["method", "split"])
+    stress_rows: list[dict] = []
+    if not args.skip_stress:
+        stress_tasks = [
+            (method, "stress_sweep", seed, episode, level)
+            for method in args.stress_methods
+            for level in args.stress_levels
+            for seed in seeds
+            for episode in range(args.stress_episodes)
+        ]
+        stress_rows = run_tasks(stress_tasks)
+    stress_metrics = summarize(stress_rows, ["method", "split"]) if stress_rows else []
     stress_output = []
     for row in stress_metrics:
         out = dict(row)
@@ -837,51 +1136,61 @@ def main() -> None:
     plot_success(metrics, FIGURES / "vt_disagreement_success_by_split.png")
     plot_energy(metrics, FIGURES / "vt_disagreement_energy_by_split.png")
     plot_ablation(ablation_metrics, FIGURES / "vt_disagreement_ablation_success.png")
-    plot_stress(stress_output, FIGURES / "vt_disagreement_stress_sweep.png")
+    if stress_output:
+        plot_stress(stress_output, FIGURES / "vt_disagreement_stress_sweep.png")
 
+    decision, reason = terminal_decision(metrics, ablation_metrics)
     combined = {r["method"]: r for r in metrics if r["split"] == "combined_shift"}
     ablation_combined = {r["method"]: r for r in ablation_metrics if r["split"] == "combined_shift"}
-    proposed = combined["vt_disagreement_branch_mpc"]
-    best_non_oracle = max(
-        (r for m, r in combined.items() if m not in {"vt_disagreement_branch_mpc", "oracle_mode_mpc"}),
-        key=lambda r: float(r["mean_success"]),
-    )
-    terminal = "STRONG_REVISE"
-    reason = "real MuJoCo evidence exists, but the method must clear stronger/public/hardware evidence before ICLR main"
-    if float(proposed["mean_success"]) <= float(best_non_oracle["mean_success"]) + 0.025:
-        terminal = "KILL_ARCHIVE"
-        reason = "proposed branch planner is matched by a strong non-oracle baseline on combined shift"
-    if "no_branch_preservation" in ablation_combined:
-        no_branch = ablation_combined["no_branch_preservation"]
-        if float(no_branch["mean_success"]) >= float(ablation_combined["full_vt_disagreement_branch_mpc"]["mean_success"]) - 0.025:
-            terminal = "KILL_ARCHIVE"
-            reason = "no-branch ablation matches the full method"
-
     with (RESULTS / "summary.txt").open("w", encoding="utf-8") as handle:
-        handle.write("Paper 66 real MuJoCo visuotactile world-model disagreement rebuild\n")
-        handle.write(f"Seeds: {SEEDS}; episodes per seed: {EPISODES_PER_SEED}; workers: {MAX_WORKERS}\n")
+        handle.write("Paper 66 real MuJoCo calibrated visuotactile branch-and-probe rebuild, v5\n")
+        handle.write(f"Seeds: {seeds}; episodes per seed: {args.episodes}; workers: {MAX_WORKERS}\n")
         handle.write("Main rows: %d; ablation rows: %d; stress rows: %d\n" % (len(raw_rows), len(ablation_rows), len(stress_rows)))
-        handle.write(f"Terminal decision: {terminal}\n")
+        handle.write(f"Terminal decision: {decision}\n")
         handle.write(f"Terminal reason: {reason}\n")
         handle.write("\nCombined-shift main results:\n")
         for method in METHODS:
-            row = combined[method]
-            handle.write(
-                f"- {method}: success={row['mean_success']} ci95={row['ci95_success']} "
-                f"error={row['mean_final_error']} energy={row['mean_energy']} violation={row['mean_contact_violation']}\n"
-            )
+            if method in combined:
+                row = combined[method]
+                handle.write(
+                    f"- {method}: success={row['mean_success']} ci95={row['ci95_success']} "
+                    f"error={row['mean_final_error']} energy={row['mean_energy']} "
+                    f"violation={row['mean_contact_violation']} diagnostic={row['diagnostic_rate']}\n"
+                )
         handle.write("\nCombined-shift ablations:\n")
         for method, row in sorted(ablation_combined.items()):
             handle.write(f"- {method}: success={row['mean_success']} ci95={row['ci95_success']} energy={row['mean_energy']}\n")
-        handle.write("\nPairwise combined-shift comparisons vs vt_disagreement_branch_mpc:\n")
+        handle.write("\nPairwise comparisons vs cvtb_mpc_v5:\n")
         for row in pairwise:
-            handle.write(
-                f"- {row['baseline']}: diff={row['mean_success_diff_vs_vt']} "
-                f"t={row['paired_t_approx']} p={row['normal_approx_p']}\n"
-            )
+            if row["split"] in {"combined_shift", "sensor_conflict", "contact_dropout", "delayed_touch_sticky"}:
+                handle.write(
+                    f"- {row['split']} vs {row['baseline']}: success_delta={row['success_delta_mean']} "
+                    f"action_diff={row['action_diff_rate']} p={row['normal_approx_p']}\n"
+                )
 
-    print(f"wrote Paper 66 MuJoCo evidence to {RESULTS}")
+    print(f"wrote Paper 66 MuJoCo evidence to {RESULTS}", flush=True)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seeds", type=int, default=DEFAULT_SEED_COUNT)
+    parser.add_argument("--episodes", type=int, default=DEFAULT_EPISODES_PER_SEED)
+    parser.add_argument("--ablation-episodes", type=int, default=DEFAULT_ABLATION_EPISODES_PER_SEED)
+    parser.add_argument("--stress-episodes", type=int, default=DEFAULT_STRESS_EPISODES_PER_SEED)
+    parser.add_argument("--splits", nargs="+", default=MAIN_SPLITS)
+    parser.add_argument("--ablation-splits", nargs="+", default=["combined_shift", "sensor_conflict", "delayed_touch_sticky"])
+    parser.add_argument("--stress-levels", nargs="+", type=float, default=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    parser.add_argument(
+        "--stress-methods",
+        nargs="+",
+        default=["mean_fusion_mpc", "ensemble_uncertainty_mpc", "robust_minimax_mpc", "old_vt_disagreement_branch_mpc", "cvtb_mpc_v5", "oracle_mode_mpc"],
+    )
+    parser.add_argument("--skip-stress", action="store_true")
+    parser.add_argument("--workers", type=int, default=MAX_WORKERS)
+    parser.add_argument("--results-dir", default=str(RESULTS))
+    parser.add_argument("--figures-dir", default=str(FIGURES))
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    main()
+    run(parse_args())
