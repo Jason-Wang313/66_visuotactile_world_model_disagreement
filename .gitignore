@@ -7,3 +7,9 @@ __pycache__/
 *.fdb_latexmk
 *.fls
 *.partial.csv
+results/dev_*/
+figures/dev_*/
+logs/
+results/full_run_*.log
+results/full_run_*.pid
+tmp/

@@ -1,149 +1,470 @@
 \documentclass{article}
 \usepackage{iclr2026_conference,times}
 \input{math_commands.tex}
-\usepackage{hyperref}
-\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage[colorlinks=false,pdfborder={0 0 1.8},citebordercolor={0 1 0},linkbordercolor={1 0.35 0},urlbordercolor={0 0.55 1}]{hyperref}
+\usepackage{url}
+\hypersetup{
+  colorlinks=false,
+  pdfborder={0 0 1.8},
+  citebordercolor={0 1 0},
+  linkbordercolor={1 0.35 0},
+  urlbordercolor={0 0.55 1}
+}
 
-\title{Visuotactile World-Model Disagreement:\\A MuJoCo Negative Result}
+\input{generated/result_macros.tex}
+
+\newcommand{\method}{\textsc{CVTB-MPC}}
+\newcommand{\oldmethod}{\textsc{VT-Branch}}
+\newcommand{\belief}{b}
+\newcommand{\latent}{z}
+\newcommand{\state}{x}
+\newcommand{\obs}{o}
+\newcommand{\act}{a}
+\newcommand{\branchset}{\mathcal{B}}
+\newcommand{\phys}{\mathcal{P}}
+\newcommand{\health}{\mathcal{H}}
+\newcommand{\candidates}{\mathcal{A}}
+\newcommand{\risk}{\mathcal{R}}
+\newcommand{\Real}{\mathbb{R}}
+
+\title{Calibrated Visuotactile Branch-and-Probe MPC:\\A Submission-Grade Negative Result}
 \author{Anonymous Authors}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-This paper records a negative result for a tempting multimodal robotics mechanism: preserving vision-touch disagreement as explicit world-model branches during contact-rich planning.
-The hypothesis is that branch preservation should outperform branch-collapsing fusion and generic uncertainty methods when hidden physical modes make vision and touch disagree.
-We rebuilt the idea as a MuJoCo planar manipulation benchmark with real contact rollouts, hidden friction, visual bias, tactile noise, sticky contact, combined shift, strong non-oracle baselines, ablations, stress sweeps, and seed-level uncertainty.
-The mechanism fails the submission gate.
-On the combined shift, the proposed visuotactile disagreement branch planner reaches 0.450 success, while mean fusion reaches 0.667, ensemble uncertainty reaches 0.733, and an oracle reaches 0.800.
-Ablations that remove branch preservation, the disagreement trigger, the risk penalty, or tactile residual updates match or beat the full method.
-We therefore mark this project \textbf{KILL/ARCHIVE} for ICLR main rather than polishing an unsupported claim.
+Vision and touch are complementary in contact-rich manipulation: vision localizes free-space state, while tactile feedback exposes contact, force, and material effects that cameras often miss. A tempting world-model design is therefore to preserve vision-touch disagreement as explicit latent branches during planning instead of collapsing the signals into a single fused estimate. This paper tests that design under a hostile, pre-registered standard. We rebuild the idea as Calibrated Visuotactile Branch-and-Probe MPC (\method{}), which separates physical-mode uncertainty from sensor-health uncertainty, uses value-of-information gating for diagnostic probes, scores candidate actions with a CVaR-style branch tail loss, and falls back conservatively under suspected sensor corruption. The final CPU-only protocol is frozen before the full run: \MainRows{} MuJoCo main episode-method rows over 8 seeds, 24 episodes, 10 hidden visuotactile shifts, and 13 methods, plus \AblationRows{} ablation rows and \StressRows{} stress-sweep rows. The result is not an ICLR-main-ready positive claim. \method{} reaches aggregate success \CVTBAggregateSuccess{} against mean fusion \MeanAggregateSuccess{}, ensemble uncertainty \EnsembleAggregateSuccess{}, robust minimax \RobustAggregateSuccess{}, particle belief \ParticleAggregateSuccess{}, old branch preservation \OldVTAggregateSuccess{}, and oracle reference \OracleAggregateSuccess{}. The terminal decision is \PaperDecision{}. We release the evidence package, generated tables, negative cases, and validation scripts so the failure mode is reproducible rather than cosmetically hidden.
 \end{abstract}
 
-\section{Question}
-Vision and touch often disagree in contact-rich robotics: vision may see an object at the wrong pose under occlusion, while touch may observe a contact force consistent with a different physical mode.
-The original research bet was that a world model should not immediately average those signals.
-Instead, it should keep action-critical alternatives explicit until probing or motion collapses them.
-This idea sits near crowded multimodal robot-learning work on vision-touch representation learning, visual-tactile manipulation, and large robot policy models~\citep{prior4,prior7,prior8}.
-The novelty boundary is therefore narrow: the mechanism must change closed-loop decisions, not merely rename uncertainty.
+\section{Executive Summary}
+
+The motivating hypothesis is simple and seductive. If vision and touch disagree, averaging them can erase the action-relevant ambiguity: one branch may correspond to a biased visual estimate, another to an informative contact event, and a third to a sticky or high-friction physical mode. A branch-preserving planner should, in principle, choose safer pushes and run diagnostic probes only when probing is worth its cost. This story is consistent with a broader literature showing that visual and tactile feedback can improve contact-rich manipulation and robustness \citep{lee2019,lee2019extended,calandra2018,hansen2022,huang2024}.
+
+The hostile counter-hypothesis is that raw disagreement is not the right state variable. A tactile residual can mean a hidden physical mode, a sensor dropout, a delayed contact estimate, or an unmodeled actuator effect. A planner that preserves branches without identifying sensor health can become more confident in the wrong alternatives. The v4 artifact in this repository already exposed that failure: the old branch planner lost to mean fusion and ensemble uncertainty. The expanded v5 rebuild gives the idea a fairer shot by adding calibrated sensor-health branches, value-of-information gating, CVaR tail scoring, and robust fallback.
+
+The final result is deliberately reported under the same standard we would use for a positive submission. The method is allowed to improve during development, then the protocol is frozen. The final run is not tuned after seeing the full results. The manuscript includes formal setup, method derivations, decision gates, strong baselines, ablations, paired statistics, stress tests, seed-level tables, limitations, and reproducibility details. The paper should be read as a serious archive of a falsified mechanism, not as a weak positive paper dressed up for submission.
+
+\input{generated/gate_table.tex}
+
+\section{Hostile Related Work}
+
+\paragraph{Visuotactile manipulation.}
+Self-supervised multimodal representation learning has shown that vision and haptic feedback can improve sample efficiency and robustness in contact-rich tasks such as peg insertion \citep{lee2019,lee2019extended}. Grasping and regrasping work shows that tactile feedback can complement vision when object state is hard to infer visually \citep{calandra2018}. Visuotactile reinforcement learning studies tactile gating, augmentation, and robustness under visual and physical changes \citep{hansen2022}. Recent hardware-oriented work such as 3D-ViTac demonstrates that dense tactile sensing fused with visual information can improve fine-grained bimanual manipulation \citep{huang2024}. These papers are dangerous prior art for this project because they make multimodal fusion a strong baseline rather than an easy opponent.
+
+\paragraph{Tactile sensing and sensor health.}
+High-resolution tactile sensors such as GelSight and DIGIT make contact geometry and force cues far richer than scalar force thresholds \citep{yuan2017,lambeta2020}. Richer sensing, however, also makes health modeling more important: contact absence, saturation, slip, delay, calibration drift, and field-of-view occlusion can all masquerade as physical state changes. A branch-preserving world model is not enough unless it can tell whether a branch corresponds to the object or to the sensor.
+
+\paragraph{Uncertainty-aware planning.}
+Particle filters and probabilistic robotics provide a classic language for maintaining multiple state hypotheses under partial observability \citep{thrun2002,thrun2005,kaelbling1998}. Deep ensembles and dropout approximations provide modern uncertainty heuristics for learned models \citep{lakshminarayanan2017,gal2016}. MPC and cross-entropy planning are standard tools for action-sequence search under learned or simulated dynamics \citep{bharadhwaj2020}. Conformal risk control gives a useful reference point for turning calibration information into risk bounds \citep{angelopoulos2025}. Against this background, the novelty of this paper cannot be ``we keep multiple hypotheses.'' The only defensible novelty would be showing that visuotactile disagreement branches change robot actions for a reason that strong uncertainty and robust-planning baselines do not already capture.
+
+\paragraph{Simulation and evidence standard.}
+The experiments use MuJoCo because it is a fast model-based-control simulator with contact dynamics suitable for controlled mechanism tests \citep{todorov2012}. We do not claim hardware transfer. We use simulation as a falsifier: if a mechanism cannot beat strong baselines in a compact environment specifically designed to expose it, it is not ready for an ICLR-main positive claim.
+
+\section{Problem Setup}
+
+We study a planar contact-manipulation problem. The state $\state_t\in\Real^d$ contains object pose, pusher pose, velocity-like internal simulator variables, and hidden split parameters. At each episode, the robot receives a visual estimate $v_t$, a tactile estimate $\tau_t$, and force/contact signals $f_t$. The robot must choose a push action $\act\in\candidates$ that moves the object to a target. The hidden latent variable is factored as
+\begin{equation}
+  \latent = (p,h),\qquad p\in\phys,\quad h\in\health,
+\end{equation}
+where $p$ denotes physical mode variables such as friction, drag, sticky contact, and actuator scale, while $h$ denotes sensor-health variables such as visual bias, tactile noise, dropout, bias, delay, and contact-confidence corruption.
+
+The observation model is intentionally small but captures the ambiguity that matters:
+\begin{align}
+  v_t &= g_v(\state_t) + \epsilon_v(h),\\
+  \tau_t &= g_\tau(\state_t,p) + \epsilon_\tau(h),\\
+  f_t &= g_f(\state_t,p,\act_{t-1}) + \epsilon_f(h).
+\end{align}
+The planner observes $\obs_t=(v_t,\tau_t,f_t)$ but not $(p,h)$. It chooses an action according to a belief over compact branches:
+\begin{equation}
+  \belief_t(\latent)\propto
+  \belief_{t-1}(\latent)\,
+  P(v_t,\tau_t,f_t\mid \state_t,\latent).
+\end{equation}
+
+The primary metric is closed-loop success:
+\begin{equation}
+  S(\act)=\mathbf{1}\{ \|q_T(\act)-q^\star\|_2\leq \epsilon\},
+\end{equation}
+where $q_T$ is the final object position and $q^\star$ is the target. We also report final error, an energy/contact-effort proxy, contact-violation rate, branch entropy, diagnostic-probe rate, probe value, fallback rate, and paired action-difference rates.
+
+\section{Why Branch Preservation Can Help}
+
+Branch preservation can help only when the candidate action ranking changes in the right episodes. Let each branch $b\in\branchset$ define a branch-conditioned loss $\ell_b(\act)$ over candidate pushes. A collapsed fusion planner acts on a single state estimate:
+\begin{equation}
+  \act_{\mathrm{mean}}=\arg\min_{\act\in\candidates}\ell_{\bar b}(\act),
+\end{equation}
+where $\bar b$ is a mean or maximum-likelihood branch. A branch-aware planner uses the belief-weighted risk:
+\begin{equation}
+  \act_{\mathrm{branch}}=\arg\min_{\act\in\candidates}
+  \sum_{b\in\branchset} w_b \ell_b(\act) + \lambda_{\mathrm{tail}}\risk_\alpha(\{\ell_b(\act)\}_{b\in\branchset}).
+\end{equation}
+
+\paragraph{Useful conflict condition.}
+For two actions $a$ and $a'$, define $\Delta_b=\ell_b(a)-\ell_b(a')$. Branch preservation can change the decision relative to mean fusion only if
+\begin{equation}
+  \mathrm{sign}\left(\ell_{\bar b}(a)-\ell_{\bar b}(a')\right)
+  \neq
+  \mathrm{sign}\left(\sum_b w_b\Delta_b+\lambda_{\mathrm{tail}}\Delta_{\mathrm{tail}}\right).
+\end{equation}
+This condition is necessary but not sufficient. The changed action must also improve final success or reduce error without excessive contact force.
+
+\paragraph{Collapse condition.}
+If the branch-conditioned losses share an approximately affine ordering,
+\begin{equation}
+  \ell_b(\act)=\alpha_b\,\ell_{\bar b}(\act)+\beta_b+\epsilon_b(\act),
+\end{equation}
+with $\alpha_b>0$ and small residuals $\epsilon_b$, then branch preservation cannot reliably produce a different ranking. The branch objective becomes a rescaled mean-fusion objective plus a small perturbation:
+\begin{equation}
+  \sum_b w_b\ell_b(\act) =
+  \left(\sum_b w_b\alpha_b\right)\ell_{\bar b}(\act)
+  + \sum_b w_b\beta_b
+  + \sum_b w_b\epsilon_b(\act).
+\end{equation}
+This is the first failure mode a reviewer should look for: impressive branch terminology with little independent decision content.
+
+\paragraph{Sensor-health non-identifiability.}
+Suppose the same tactile residual $r_\tau$ can be generated either by a physical mode $p_1$ with healthy sensor $h_0$ or by nominal physics $p_0$ with tactile corruption $h_1$:
+\begin{equation}
+  P(r_\tau\mid p_1,h_0)=P(r_\tau\mid p_0,h_1).
+\end{equation}
+If the observation distribution is identical under these two explanations, no deterministic planner using only $r_\tau$ can identify which explanation is correct. It may still choose a robust action, but it cannot claim a causal branch-disagreement mechanism. This is why \method{} explicitly separates physical branches from sensor-health branches and why the ablation gate treats \texttt{no\_sensor\_health} as central rather than cosmetic.
+
+\section{Method: Calibrated Visuotactile Branch-and-Probe MPC}
+
+\method{} is the strongest version of the idea we could justify before freezing the protocol. It is not a neural policy. It is a compact CPU-only planner designed to make the mechanism auditable.
+
+\paragraph{Branch set.}
+The branch set combines physical branches and sensor-health branches:
+\begin{equation}
+  \branchset=\{(p_i,h_j):p_i\in\phys_{\mathrm{compact}},\, h_j\in\health_{\mathrm{compact}}\}.
+\end{equation}
+The compact set includes nominal, friction-shift, sticky-contact, visual-bias, tactile-noise, tactile-bias, dropout, and delayed-touch alternatives. It is deliberately small so that the method stays RAM-light and every candidate action can be inspected.
+
+\paragraph{Reliability calibration.}
+The planner computes modality reliability scores from disagreement magnitude, contact confidence, force consistency, contact dropout, tactile delay, and visual-bias cues. A healthy tactile residual should raise the probability of physical contact-mode branches; a low-confidence or delayed tactile residual should raise sensor-fault branches. We write this schematically as
+\begin{align}
+  \rho_v &= r_v(\|v_t-\tau_t\|, \mathrm{bias\ cues}),\\
+  \rho_\tau &= r_\tau(\mathrm{contact}, f_t,\mathrm{dropout},\mathrm{delay}),\\
+  w_{ij} &\propto \exp\{-d_{ij}(v_t,\tau_t,f_t;\rho_v,\rho_\tau)\}.
+\end{align}
+
+\paragraph{Action score.}
+For a candidate push $\act$, each branch predicts a target error, energy cost, peak contact force, and branch-specific safety penalty. The frozen score is
+\begin{equation}
+  J(\act)=
+  \sum_{b\in\branchset}w_b\ell_b(\act)
+  +\lambda_{\mathrm{cvar}}\mathrm{CVaR}_{0.75}(\{\ell_b(\act)\})
+  +\lambda_{\mathrm{force}}\phi_{\mathrm{force}}(\act)
+  +\lambda_{\mathrm{fallback}}\phi_{\mathrm{fault}}(\act).
+\end{equation}
+The CVaR term penalizes actions that are good on the mean branch but bad on plausible tail branches. The contact term penalizes excessive force. The fallback term favors robust mean-fusion actions when the posterior suggests sensor corruption rather than physical ambiguity.
+
+\paragraph{Value-of-information probing.}
+The planner may run an extra diagnostic probe, but only when the expected action regret reduction exceeds the probe cost:
+\begin{equation}
+  V_{\mathrm{probe}} =
+  \left[
+    \min_{\act}\mathbb{E}_{b}[\ell_b(\act)]
+    -
+    \mathbb{E}_{y\sim P(y\mid \obs,\mathrm{probe})}
+    \min_{\act}\mathbb{E}_{b\mid y}[\ell_b(\act)]
+  \right]
+  -c_{\mathrm{probe}}.
+\end{equation}
+In implementation, this is a deterministic proxy based on branch-conditioned best-action disagreement and tactile reliability. The no-probe ablation freezes the same branch score but disables this gate. If no-probe matches \method{} on hostile splits, the value-of-information mechanism is not identified.
+
+\paragraph{Conservative fallback.}
+When branch entropy is high and sensor reliability is low, the method can choose a robust mean-fusion anchor. This is not an admission that branching is useless; it is a guard against mistaking sensor faults for physical modes. The fallback rate is reported as a primary mechanism diagnostic.
 
 \section{Benchmark}
-We implemented a lightweight MuJoCo pusher benchmark.
-Each episode contains a sliding object, a controlled pusher, a tactile probe, a target, and a final push.
-The executed actions are real MuJoCo contact rollouts.
-The hidden physical split changes object friction, contact drag, vision bias, tactile noise, actuator effectiveness, or combinations of these factors.
-The seven main splits are nominal, high friction, low friction, vision bias, tactile noise, sticky contact, and combined shift.
 
-We compare nine planners.
-\texttt{random\_push} is a sanity check.
-\texttt{vision\_only\_mpc} and \texttt{tactile\_only\_mpc} use one modality.
-\texttt{mean\_fusion\_mpc} collapses vision and touch into one state.
-\texttt{ensemble\_uncertainty\_mpc} evaluates sampled physical hypotheses with a variance penalty.
-\texttt{conformal\_risk\_filter} shortens or rejects high-risk actions under residual thresholds.
-\texttt{diagnostic\_probe\_then\_mpc} always performs an extra probe.
-\texttt{vt\_disagreement\_branch\_mpc} is the proposed method: it preserves visual, tactile, and high-force branches when the modalities disagree.
-\texttt{oracle\_mode\_mpc} is a non-submission upper bound with access to the hidden mode.
+The benchmark is a lightweight MuJoCo planar pusher. Each episode samples an object, a pusher state, a target, hidden physical parameters, and sensor corruption parameters. The action space is a compact library of push directions, push magnitudes, and contact anchors. The simulator executes contact rollouts; the planner does not receive the hidden split label.
 
-\section{Results}
-The main experiment uses 5 seeds, 12 episodes per seed, 7 splits, and 9 methods, producing 3,780 MuJoCo episodes.
-The ablation suite adds 420 episodes and the stress sweep adds 1,200 episodes.
-Success means the object ends within 7.5 cm of the target.
-We also report final error, an energy/contact-effort proxy, and contact-violation rates.
+\paragraph{Main splits.}
+The final protocol contains ten splits: nominal, high friction, low friction, vision bias, tactile noise, sticky contact, combined shift, sensor conflict, contact dropout, and delayed-touch sticky. The last four are the hostile evaluation set. They are designed to distinguish useful branch preservation from failure under sensor corruption.
 
-\begin{table}[t]
-\centering
-\caption{Combined-shift results. The proposed branch planner is below strong non-oracle baselines.}
-\label{tab:combined}
-\begin{tabular}{lcccc}
-\toprule
-Method & Success & 95\% CI & Error & Energy \\
-\midrule
-\texttt{random\_push} & 0.083 & 0.071 & 0.151 & 0.415 \\
-\texttt{vision\_only\_mpc} & 0.550 & 0.127 & 0.073 & 0.527 \\
-\texttt{tactile\_only\_mpc} & 0.633 & 0.123 & 0.074 & 0.501 \\
-\texttt{mean\_fusion\_mpc} & 0.667 & 0.120 & 0.064 & 0.502 \\
-\texttt{ensemble\_uncertainty\_mpc} & 0.733 & 0.113 & 0.064 & 0.513 \\
-\texttt{conformal\_risk\_filter} & 0.583 & 0.126 & 0.077 & 0.483 \\
-\texttt{diagnostic\_probe\_then\_mpc} & 0.633 & 0.123 & 0.070 & 0.601 \\
-\texttt{vt\_disagreement\_branch\_mpc} & 0.450 & 0.127 & 0.094 & 0.564 \\
-\texttt{oracle\_mode\_mpc} & 0.800 & 0.102 & 0.052 & 0.554 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\paragraph{Metrics.}
+Success is final target error below the fixed threshold. Final error is continuous distance to target. Energy is a contact-effort proxy. Contact violation records unsafe peak force or repeated contact. Mechanism diagnostics include branch entropy, diagnostic rate, probe value, fallback rate, and paired action-difference rate. The action-difference rate compares \method{} to a baseline on the same split, seed, and episode.
+
+\paragraph{CPU and memory profile.}
+The final run uses no GPU and no learned high-capacity model. The branch set is compact, candidate actions are finite, and the full run uses four workers. This is intentionally conservative: the quality bar comes from stronger baselines and more hostile tests, not from a RAM-heavy training pipeline.
+
+\section{Baselines and Ablations}
+
+The main frozen run includes thirteen methods.
+\begin{itemize}
+  \item \texttt{random\_push}: a sanity-check weak baseline.
+  \item \texttt{vision\_only\_mpc}: plans from the visual estimate only.
+  \item \texttt{tactile\_only\_mpc}: plans from the tactile estimate only.
+  \item \texttt{mean\_fusion\_mpc}: collapses vision and touch into one fused state.
+  \item \texttt{ensemble\_uncertainty\_mpc}: samples physical hypotheses with an uncertainty penalty.
+  \item \texttt{conformal\_risk\_filter}: rejects or shortens actions under residual risk thresholds.
+  \item \texttt{diagnostic\_probe\_then\_mpc}: always pays for an extra probe.
+  \item \texttt{robust\_minimax\_mpc}: optimizes a conservative worst-branch objective.
+  \item \texttt{particle\_belief\_mpc}: uses a particle-style belief over compact latent hypotheses.
+  \item \texttt{old\_vt\_disagreement\_branch\_mpc}: the v4 branch-preservation method.
+  \item \texttt{cvtb\_mpc\_v5}: the proposed calibrated method.
+  \item \texttt{cvtb\_no\_probe}: the proposed method without value-of-information probing.
+  \item \texttt{oracle\_mode\_mpc}: an upper reference with hidden-mode access, not a fair deployed baseline.
+\end{itemize}
+
+The ablation suite runs on combined shift, sensor conflict, and delayed-touch sticky. It includes \method{}, no-probe, no sensor health, no branch preservation, no value-of-information gate, no CVaR tail, no contact safety, no reliability fallback, mean-only fusion, high tactile trust, small branch set, old branch preservation, ensemble uncertainty, robust minimax, and oracle. This is intentionally harsh: if the mechanism is real, at least some removals should hurt on the splits built to require the mechanism.
+
+\section{Frozen Protocol}
+
+The final command is frozen in \texttt{docs/paper66\_protocol\_freeze\_20260620.md}. It runs 8 seeds, 24 episodes per seed and split, 10 main splits, 13 main methods, 3 ablation splits, 15 ablation methods, and a 6-level stress sweep over 6 methods with 12 episodes per seed and level. The resulting evidence scale is \MainRows{} main rows, \AblationRows{} ablation rows, and \StressRows{} stress rows. The runner writes raw, seed, split-method, paired, ablation, stress, negative-case, and figure artifacts.
+
+The development record is explicit. Before the freeze, smoke and medium runs exposed three recoverable issues: over-probing, method-specific environment seeds, and weak action diversity relative to mean fusion. Those issues were repaired before the final protocol. After freeze, no scoring or split changes were allowed. This is important because a negative result is only useful if the protocol did not quietly move after seeing the answer.
+
+\section{Main Results}
+
+\input{generated/aggregate_metrics_table.tex}
+
+\input{generated/selected_split_table.tex}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{../figures/vt_disagreement_success_by_split.png}
-\caption{Success across hidden visuotactile shifts. The proposed branch method does not produce a broad advantage.}
+\includegraphics[width=0.98\linewidth]{../figures/vt_disagreement_success_by_split.png}
+\caption{Success by hidden visuotactile shift. The figure compares strong fusion, robust, particle-belief, old-branch, CVTB-MPC, and oracle references across the frozen split grid.}
 \label{fig:success}
 \end{figure}
 
-Table~\ref{tab:combined} is the central result.
-On the combined shift, \texttt{vt\_disagreement\_branch\_mpc} is worse than mean fusion by 0.217 success and worse than ensemble uncertainty by 0.283 success.
-Pairwise seed-level comparisons give approximate normal-test $p$ values of 0.0080 versus mean fusion and 0.0083 versus ensemble uncertainty, both in the wrong direction for the proposed method.
-The oracle remains higher, showing that hidden mode information is useful, but the proposed disagreement representation is not the right way to recover it.
-
-\section{Ablations}
-\begin{table}[t]
+\begin{figure}[t]
 \centering
-\caption{Combined-shift ablations. Removing the claimed mechanism does not hurt.}
-\label{tab:ablations}
-\begin{tabular}{lccc}
-\toprule
-Ablation & Success & 95\% CI & Energy \\
-\midrule
-\texttt{full\_vt\_disagreement\_branch\_mpc} & 0.500 & 0.128 & 0.532 \\
-\texttt{no\_branch\_preservation} & 0.517 & 0.128 & 0.547 \\
-\texttt{no\_diagnostic\_value} & 0.550 & 0.127 & 0.481 \\
-\texttt{no\_disagreement\_trigger} & 0.583 & 0.126 & 0.496 \\
-\texttt{no\_risk\_penalty} & 0.600 & 0.125 & 0.523 \\
-\texttt{no\_tactile\_residual\_update} & 0.767 & 0.108 & 0.519 \\
-\texttt{small\_branch\_set} & 0.500 & 0.128 & 0.527 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=0.98\linewidth]{../figures/vt_disagreement_energy_by_split.png}
+\caption{Energy/contact-effort proxy by split. Lower is better. Energy is reported alongside success because a planner can win success by using unsafe or excessive contact.}
+\label{fig:energy}
+\end{figure}
+
+The aggregate table is the submission gate in miniature. \method{} is not judged against weak baselines alone. It must survive mean fusion, ensemble uncertainty, conformal risk filtering, always-probe MPC, robust minimax, particle-belief MPC, the old branch planner, and no-probe variants. Aggregate success for \method{} is \CVTBAggregateSuccess{}; the corresponding values for mean fusion, ensemble uncertainty, robust minimax, particle belief, old branch preservation, and oracle are \MeanAggregateSuccess{}, \EnsembleAggregateSuccess{}, \RobustAggregateSuccess{}, \ParticleAggregateSuccess{}, \OldVTAggregateSuccess{}, and \OracleAggregateSuccess{}. The final-error story is similarly important: \method{} has aggregate error \CVTBAggregateError{}, while mean fusion, ensemble uncertainty, robust minimax, particle belief, and old branch preservation have \MeanAggregateError{}, \EnsembleAggregateError{}, \RobustAggregateError{}, \ParticleAggregateError{}, and \OldVTAggregateError{}.
+
+The interpretation depends on the generated gate table. If \method{} fails against strong baselines or no-probe variants, the paper cannot be rescued by prose. The benchmark still teaches something useful: calibrated branching is a better-motivated mechanism than raw disagreement preservation, but the frozen evidence determines whether it is a submission candidate.
+
+\section{Mechanism Diagnostics}
+
+\input{generated/diagnostic_table.tex}
+
+The diagnostic table prevents a common failure in robotics papers: reporting only success and then narrating a mechanism that was never measured. \method{} reports branch entropy, probe value, diagnostic-probe rate, and fallback rate for every split. These quantities help answer whether the method actually used the machinery it claims to introduce. A low diagnostic rate is not automatically bad; it can mean the value-of-information gate correctly avoided pointless probes. But if no-probe ablations match the full method on the same hostile splits, the value-of-information claim is not causally supported.
+
+Branch entropy is also ambiguous. High entropy can mean unresolved physical uncertainty or sensor corruption. That is why the fallback rate is reported. If the method often falls back and still wins, the contribution may be a robust sensor-health fallback rather than branch preservation. If it does not win, the fallback merely documents a failure mode.
+
+\section{Ablation Results}
+
+\input{generated/ablation_table.tex}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.88\linewidth]{../figures/vt_disagreement_ablation_success.png}
-\caption{Ablations on the combined shift. The full branch mechanism is not necessary for success.}
+\includegraphics[width=0.94\linewidth]{../figures/vt_disagreement_ablation_success.png}
+\caption{Ablation success on combined shift. The full method must separate from no-probe, no-sensor-health, no-VOI, no-tail-risk, and mean-only variants to support the mechanism claim.}
 \label{fig:ablation}
 \end{figure}
 
-The ablations are more damaging than the baseline table.
-If the paper's mechanism were correct, removing branch preservation or the disagreement trigger should reduce performance.
-Instead, \texttt{no\_branch\_preservation}, \texttt{no\_diagnostic\_value}, \texttt{no\_disagreement\_trigger}, \texttt{no\_risk\_penalty}, and \texttt{no\_tactile\_residual\_update} all match or beat the full method.
-The tactile residual ablation is especially revealing: in this benchmark, the branch update over-trusts noisy tactile alternatives and harms planning more than it helps.
+The ablation suite is more important than the main table. A positive paper would require the sensor-health model, value-of-information gate, CVaR tail term, branch preservation, contact-safety term, and fallback to be necessary on at least some hostile splits. If no-probe matches \method{}, the diagnostic probe is not identified. If no-sensor-health matches \method{}, the central v5 repair did not matter. If mean-only fusion matches \method{}, branch preservation collapses into ordinary fusion. If robust minimax or ensemble uncertainty matches \method{}, the contribution is likely a restatement of generic uncertainty handling.
 
-\section{Stress Tests and Negative Cases}
+This is a deliberately unfriendly interpretation, and that is the point. A submission should survive it before being sent to reviewers.
+
+\section{Paired Comparisons}
+
+\input{generated/hostile_pairwise_table.tex}
+
+Paired comparisons are stricter than split averages because they compare methods on the same split, seed, and episode. Positive success delta favors \method{}. Positive final-error improvement and energy improvement mean the baseline had worse error or higher energy. The contact-violation delta is \method{} minus baseline, so positive values are safety costs. The action-difference rate is especially important: a method cannot claim a novel planning mechanism if it chooses the same actions as a strong baseline in the episodes where it supposedly matters.
+
+The normal-approximation $p$ values are not used as publication-style proof. They are included as a rough paired diagnostic for whether a large-looking success delta is stable over the shared episode grid. The decision gates rely on effect direction, ablation separation, and hostile-split robustness rather than a single thresholded statistical test.
+
+\section{Stress Sweep}
+
+\input{generated/stress_table.tex}
+
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.82\linewidth]{../figures/vt_disagreement_stress_sweep.png}
-\caption{Stress sweep over visual bias, tactile noise, and friction shift. The branch planner does not dominate robust alternatives.}
+\includegraphics[width=0.90\linewidth]{../figures/vt_disagreement_stress_sweep.png}
+\caption{Stress sweep over visual bias, tactile noise, and friction shift. A real branch mechanism should degrade gracefully or expose where it fails.}
 \label{fig:stress}
 \end{figure}
 
-The stress sweep jointly increases visual bias, tactile noise, and friction shift.
-At maximum stress, mean fusion and diagnostic probing both reach 0.525 success, while the proposed method reaches 0.400.
-We also record three negative cases: simultaneous adversarial vision and tactile corruption, unmodeled actuator weakness, and semantic target ambiguity.
-These are not minor engineering issues.
-They expose missing state variables that branch-preserving visuotactile disagreement does not represent.
+The stress sweep jointly increases visual bias, tactile noise, and friction shift. This is a hard test for branch-preserving methods because disagreement can become both more informative and more deceptive. If stress success drops because tactile residuals become corrupted, the failure supports the sensor-health critique. If stress success remains high but no-probe or mean fusion also remains high, the mechanism is not uniquely supported. The stress sweep therefore serves as a falsifier rather than an extra plot for polish.
+
+\section{Failure Analysis}
+
+\paragraph{Failure mode 1: sensor health and physical mode remain confounded.}
+The v5 method explicitly models sensor-health branches, but a compact hand-designed reliability proxy can still be too weak. Tactile noise, tactile bias, dropout, and delayed touch can produce residuals that resemble high friction or sticky contact. Without richer temporal evidence, the planner can preserve the wrong branch family.
+
+\paragraph{Failure mode 2: mean fusion is a stronger baseline than expected.}
+Mean fusion is not glamorous, but in a compact pusher benchmark it can be very competitive. When the visual and tactile estimates are both mildly noisy rather than adversarially separated, averaging reduces variance and produces stable pushes. A branch method must win specifically where mean fusion is wrong, not merely match it elsewhere.
+
+\paragraph{Failure mode 3: robust minimax and particle belief absorb much of the intended novelty.}
+The proposed method is closest to robust and belief-space planning. If a particle-belief or minimax baseline obtains the same behavior, the paper's novelty collapses into implementation detail. This is why those baselines are included in the frozen run rather than saved for future work.
+
+\paragraph{Failure mode 4: value-of-information is difficult to identify in short episodes.}
+Diagnostic probing helps only when it changes the final action enough to pay for contact and time costs. In a short pusher episode with a small action library, the best action before and after a probe can be identical. Then no-probe variants will match the full method, and the VOI mechanism fails even if the probe estimate is reasonable.
+
+\paragraph{Failure mode 5: the oracle gap does not rescue the method.}
+An oracle gap shows that hidden modes matter. It does not prove this method is the right way to infer them. The gap could require richer tactile histories, explicit actuator-mode branches, learned dynamics, real-world calibration, or a larger action set.
+
+\section{What Would Be Needed for a Real Submission}
+
+A future ICLR-main candidate would need a stronger positive claim than ``branching sounds plausible.'' The likely path is a new method with richer temporal identification: multiple contact probes, explicit delay modeling, branch-conditioned actuator calibration, and learned sensor-health likelihoods validated on held-out corruptions. It would also need external validation on a public simulator benchmark or hardware. The current benchmark is useful for mechanism falsification, but it is too custom and compact to carry a main-conference positive result by itself.
+
+The experimental bar should not be lowered. A revived version should keep mean fusion, ensemble uncertainty, robust minimax, particle-belief MPC, always-probe MPC, old branch preservation, no-probe, no-sensor-health, no-VOI, no-tail-risk, and oracle references. It should freeze the protocol before the final run and report every predefined stress level, even if the results are ugly. The instruction is simple: do not optimize for pretty results; optimize for a result that survives hostile review.
 
 \section{Limitations}
-This is not a real-robot study.
-It is a high-fidelity simulator rebuild with compact analytic planners rather than trained deep world-action models.
-The related-work audit is still based on local hostile pool slices rather than a full manual review.
-Those limitations would normally justify a strong-revise decision if the mechanism had produced a clear empirical signal.
-It did not.
-The negative conclusion therefore does not claim that all visuotactile branching is useless; it only rejects this implementation and paper thesis as an ICLR-main submission.
 
-\section{Decision}
-The submission gate was explicit: the proposed method needed to beat mean fusion, uncertainty/risk filters, diagnostic probing, and no-mechanism ablations under hidden physical shifts.
-It failed that gate.
-The honest terminal action is \textbf{KILL/ARCHIVE}.
-Future work should investigate different latent-state representations, sensor-health models, and real robot or public benchmark validation before reviving this idea.
+\input{generated/negative_cases_table.tex}
+
+This is not a real-robot study. The tactile signal is simulated and lower-dimensional than modern tactile images. The action library is compact. The physical modes are limited to friction, drag, sticky contact, actuator scale, and contact corruption factors. The sensor-health model is hand-designed rather than learned from calibration data. The stress sweep is controlled and synthetic. These limitations would matter even if \method{} had passed the local gates. When the method fails local gates, they make a positive ICLR-main submission untenable.
+
+\section{Conclusion}
+
+The core idea remains plausible in a broader sense: contact-rich robots should not blindly average vision and touch when modalities disagree. But this paper tests a specific mechanism under a frozen, hostile protocol. The evidence package contains \MainRows{} main rows, \AblationRows{} ablation rows, \StressRows{} stress rows, \MetricRows{} split-method summaries, \SeedRows{} seed summaries, and \PairwiseRows{} paired comparisons. Under that evidence, the terminal decision is \PaperDecision{}. The contribution is the falsification: it shows what a stronger visuotactile world-model paper must prove before it deserves a main-conference claim.
+
+\clearpage
+\appendix
+
+\section{Derivation Details}
+
+\subsection{Risk Objective}
+
+Let $q_T(\act,b)$ be the branch-conditioned final object position and $q^\star$ the target. A simple branch loss is
+\begin{equation}
+  \ell_b(\act)=
+  \|q_T(\act,b)-q^\star\|_2
+  +\lambda_E E(\act,b)
+  +\lambda_F \max(0,F_{\max}(\act,b)-F_0).
+\end{equation}
+The tail component sorts $\ell_b(\act)$ by branch loss and averages the worst $\alpha$ fraction:
+\begin{equation}
+  \mathrm{CVaR}_{\alpha}(\act)=
+  \frac{1}{|\branchset_\alpha(\act)|}
+  \sum_{b\in\branchset_\alpha(\act)}\ell_b(\act).
+\end{equation}
+The full score is then the sum of expected branch loss, tail risk, contact penalty, and sensor-fault fallback penalty. This objective is intentionally interpretable; a learned world model could replace the branch rollout but would make the ablation story harder to audit.
+
+\subsection{Probe Gate}
+
+Let $\act^\star$ be the best action under the current branch posterior and $\act^\star_y$ be the best action after a hypothetical probe outcome $y$. The exact expected value of information is
+\begin{equation}
+  \mathrm{EVI} =
+  \mathbb{E}_{y}\left[
+    \mathbb{E}_{b\mid y}\ell_b(\act^\star)
+    -
+    \mathbb{E}_{b\mid y}\ell_b(\act^\star_y)
+  \right].
+\end{equation}
+The implementation uses a lightweight deterministic proxy because exhaustive probe-outcome simulation would be unnecessary for this compact benchmark. The proxy increases when branch-conditioned best actions disagree and decreases when tactile reliability is low or contact force is already high.
+
+\subsection{Why No-Probe Can Match}
+
+If the current best action remains optimal after the probe for most plausible outcomes,
+\begin{equation}
+  \act^\star_y=\act^\star\quad \mathrm{for\ most}\ y,
+\end{equation}
+then $\mathrm{EVI}\approx 0$ and no-probe will match the full method. This is a mechanism failure for any paper whose claim depends on diagnostic probing. It can happen even when the belief update is well calibrated; the action library may simply be too coarse for the extra information to matter.
+
+\subsection{Action-Difference Necessity}
+
+For a baseline policy $\pi_0$ and proposed policy $\pi_1$, define the paired action-difference indicator
+\begin{equation}
+  D_i=\mathbf{1}\{\|\hat d_i^{(1)}-\hat d_i^{(0)}\|_2>\delta_d
+  \lor |m_i^{(1)}-m_i^{(0)}|>\delta_m
+  \lor \|c_i^{(1)}-c_i^{(0)}\|_2>\delta_c\},
+\end{equation}
+where $\hat d$ is push direction, $m$ is push magnitude, and $c$ is contact anchor. A high-level mechanism claim requires both nontrivial $\mathbb{E}[D_i]$ and positive paired outcome deltas on the same hostile episodes. Either alone is insufficient.
+
+\section{Implementation Notes}
+
+The runner is a single Python script with NumPy, MuJoCo, and Matplotlib. It shares the same environment seed across methods for a given split, seed, and episode, so paired comparisons are meaningful. Method-specific randomness is isolated in a separate policy seed. Partial main and ablation CSVs are written after each split so an interrupted run can be audited. The final run writes:
+\begin{itemize}
+  \item \texttt{results/vt\_disagreement\_raw.csv};
+  \item \texttt{results/raw\_seed\_metrics.csv};
+  \item \texttt{results/vt\_disagreement\_metrics.csv};
+  \item \texttt{results/vt\_disagreement\_pairwise.csv};
+  \item \texttt{results/vt\_disagreement\_ablation\_raw.csv};
+  \item \texttt{results/vt\_disagreement\_ablation.csv};
+  \item \texttt{results/stress\_sweep.csv};
+  \item \texttt{results/negative\_cases.csv};
+  \item figures under \texttt{figures/}.
+\end{itemize}
+
+The asset renderer converts these CSVs into the tables used in this PDF. The validator checks row counts, figures, citation-box setup, PDF page count, and absence of a visible Desktop copy.
+
+\section{Frozen Command}
+
+\begin{verbatim}
+python src\run_experiment.py --seeds 8 --episodes 24
+  --ablation-episodes 24 --stress-episodes 12
+  --splits nominal high_friction low_friction vision_bias
+  tactile_noise sticky_contact combined_shift sensor_conflict
+  contact_dropout delayed_touch_sticky
+  --ablation-splits combined_shift sensor_conflict
+  delayed_touch_sticky
+  --stress-levels 0.0 0.2 0.4 0.6 0.8 1.0
+  --workers 4 --results-dir results --figures-dir figures
+\end{verbatim}
+
+\section{Reproducibility Checklist}
+
+\begin{itemize}
+  \item Code compiles with \texttt{python -m py\_compile src/run\_experiment.py}.
+  \item Asset renderer compiles with \texttt{python -m py\_compile scripts/render\_submission\_assets.py}.
+  \item Main raw rows: \MainRows{}.
+  \item Ablation raw rows: \AblationRows{}.
+  \item Stress rows recorded in summary: \StressRows{}.
+  \item Main split-method summaries: \MetricRows{}.
+  \item Seed summaries: \SeedRows{}.
+  \item Paired comparisons: \PairwiseRows{}.
+  \item Ablation summary rows: \AblationSummaryRows{}.
+  \item Stress summary rows: \StressSummaryRows{}.
+  \item Tables are generated by \texttt{scripts/render\_submission\_assets.py}.
+  \item The canonical PDF is copied only to \texttt{C:/Users/wangz/Downloads/66.pdf}.
+  \item The validator fails if \texttt{C:/Users/wangz/Desktop/66.pdf} exists.
+\end{itemize}
+
+\section{Full Split-Method Metrics}
+
+\input{generated/full_metrics_longtable.tex}
+
+\clearpage
+\section{Full Paired Comparisons}
+
+\input{generated/full_pairwise_longtable.tex}
+
+\clearpage
+\section{Seed-Level Robustness}
+
+Aggregate means can hide seed fragility. Table~\ref{tab:seed-metrics} therefore reports seed-level summaries for selected strong baselines, \method{}, its no-probe variant, the old branch planner, and the oracle. This table is intentionally kept in the paper rather than only in CSV form. A hostile reviewer should be able to inspect whether a conclusion is carried by one lucky seed or persists across the frozen seed grid.
+
+\input{generated/seed_metrics_selected_longtable.tex}
+
+\clearpage
+\section{Hostile Reviewer Questions}
+
+\paragraph{Does this prove visuotactile branching is impossible?}
+No. It proves that this implementation and evidence package do not support an ICLR-main positive claim. Better tactile histories, real sensor calibration, richer actions, or learned health likelihoods may revive the broader idea.
+
+\paragraph{Why not submit as a negative result?}
+Negative results can be valuable, but this package lacks real-robot or public benchmark validation. It is submission-grade as an internal archive report and a falsification artifact. That is different from being a high-odds main-conference submission.
+
+\paragraph{Could more tuning make \method{} win?}
+Maybe on this custom benchmark, but post-freeze tuning would be scientifically weak. A new method should receive a new development log and frozen evaluation.
+
+\paragraph{Why include the oracle?}
+The oracle is not a fair deployable baseline. It measures remaining headroom if hidden mode information were available. An oracle gap shows the task has avoidable failures; it does not validate this method.
+
+\paragraph{Why insist on a 25+ page PDF for an archive?}
+Because the expanded standard is about evidence quality, not optimism. A failed paper should fail with enough formal setup, ablations, diagnostics, and reproducibility detail that the next attempt knows exactly what not to repeat.
+
+\section{Terminal Decision}
+
+The final decision is \PaperDecision{}. The code, frozen protocol, generated tables, validation script, and final PDF remain useful for future work. The current mechanism should not be sent to ICLR main as a positive contribution unless a future rebuild changes the method and survives a new frozen protocol.
 
 \bibliographystyle{iclr2026_conference}
 \bibliography{references}

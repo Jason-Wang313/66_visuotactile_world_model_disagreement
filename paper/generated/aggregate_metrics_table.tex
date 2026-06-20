@@ -1,0 +1,25 @@
+\begin{table}[t]
+\centering
+\caption{Aggregate frozen results across all ten visuotactile shifts. Success is higher-is-better; error, energy, and contact violation are lower-is-better.}
+\label{tab:aggregate-main}
+\scriptsize
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & Episodes & Success & Error & Energy & Contact & Entropy & Probe & Fallback \\
+\midrule
+Random & 1920 & 0.207 & 0.129 & 0.419 & 0.000 & 0.000 & 0.047 & 0.000 \\
+Vision only & 1920 & 0.801 & 0.051 & 0.494 & 0.000 & 0.000 & 0.000 & 0.000 \\
+Tactile only & 1920 & 0.759 & 0.058 & 0.487 & 0.000 & 0.000 & 0.000 & 0.000 \\
+Mean fusion & 1920 & 0.796 & 0.052 & 0.492 & 0.000 & 0.000 & 0.000 & 0.000 \\
+Ensemble uncertainty & 1920 & 0.778 & 0.055 & 0.489 & 0.000 & 1.077 & 0.052 & 0.000 \\
+Conformal risk & 1920 & 0.768 & 0.057 & 0.483 & 0.000 & 0.000 & 0.000 & 0.000 \\
+Diagnostic probe & 1920 & 0.750 & 0.058 & 0.577 & 0.000 & 0.000 & 0.000 & 0.000 \\
+Robust minimax & 1920 & 0.784 & 0.059 & 0.522 & 0.000 & 1.354 & 0.066 & 0.000 \\
+Particle belief & 1920 & 0.790 & 0.053 & 0.491 & 0.000 & 1.566 & 0.074 & 0.000 \\
+Old VT branch & 1920 & 0.752 & 0.058 & 0.511 & 0.000 & 0.798 & 0.048 & 0.000 \\
+CVTB-MPC & 1920 & 0.777 & 0.056 & 0.487 & 0.000 & 1.187 & 0.063 & 0.141 \\
+CVTB no-probe & 1920 & 0.777 & 0.056 & 0.487 & 0.000 & 1.187 & 0.063 & 0.141 \\
+Oracle & 1920 & 0.908 & 0.041 & 0.515 & 0.000 & 0.000 & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}

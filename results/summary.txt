@@ -1,35 +1,87 @@
-Paper 66 real MuJoCo visuotactile world-model disagreement rebuild
-Seeds: [0, 1, 2, 3, 4]; episodes per seed: 12; workers: 4
-Main rows: 3780; ablation rows: 420; stress rows: 1200
+Paper 66 real MuJoCo calibrated visuotactile branch-and-probe rebuild, v5
+Seeds: [0, 1, 2, 3, 4, 5, 6, 7]; episodes per seed: 24; workers: 4
+Main rows: 24960; ablation rows: 8640; stress rows: 3456
 Terminal decision: KILL_ARCHIVE
-Terminal reason: no-branch ablation matches the full method
+Terminal reason: strong baselines or ablations match/beat CVTB-MPC: mean_fusion_mpc; ensemble_uncertainty_mpc; robust_minimax_mpc; particle_belief_mpc; mean_fusion_mpc@combined_shift; mean_fusion_mpc@sensor_conflict; mean_fusion_mpc@contact_dropout; mean_fusion_mpc@delayed_touch_sticky
 
 Combined-shift main results:
-- random_push: success=0.0833 ci95=0.0705 error=0.1505 energy=0.4151 violation=0.0000
-- vision_only_mpc: success=0.5500 ci95=0.1269 error=0.0732 energy=0.5270 violation=0.0000
-- tactile_only_mpc: success=0.6333 ci95=0.1230 error=0.0738 energy=0.5006 violation=0.0000
-- mean_fusion_mpc: success=0.6667 ci95=0.1203 error=0.0642 energy=0.5015 violation=0.0000
-- ensemble_uncertainty_mpc: success=0.7333 ci95=0.1128 error=0.0637 energy=0.5131 violation=0.0000
-- conformal_risk_filter: success=0.5833 ci95=0.1258 error=0.0770 energy=0.4827 violation=0.0000
-- diagnostic_probe_then_mpc: success=0.6333 ci95=0.1230 error=0.0701 energy=0.6008 violation=0.0000
-- vt_disagreement_branch_mpc: success=0.4500 ci95=0.1269 error=0.0943 energy=0.5637 violation=0.0000
-- oracle_mode_mpc: success=0.8000 ci95=0.1021 error=0.0522 energy=0.5539 violation=0.0000
+- random_push: success=0.1406 ci95=0.0493 error=0.1400 energy=0.4298 violation=0.0000 diagnostic=0.0000
+- vision_only_mpc: success=0.6094 ci95=0.0692 error=0.0707 energy=0.5153 violation=0.0000 diagnostic=0.0000
+- tactile_only_mpc: success=0.5052 ci95=0.0709 error=0.0832 energy=0.4984 violation=0.0000 diagnostic=0.0000
+- mean_fusion_mpc: success=0.5729 ci95=0.0702 error=0.0751 energy=0.5111 violation=0.0000 diagnostic=0.0000
+- ensemble_uncertainty_mpc: success=0.5417 ci95=0.0707 error=0.0797 energy=0.5059 violation=0.0000 diagnostic=0.0000
+- conformal_risk_filter: success=0.4948 ci95=0.0709 error=0.0843 energy=0.4941 violation=0.0000 diagnostic=0.0000
+- diagnostic_probe_then_mpc: success=0.5156 ci95=0.0709 error=0.0809 energy=0.5976 violation=0.0000 diagnostic=1.0000
+- robust_minimax_mpc: success=0.5833 ci95=0.0699 error=0.0756 energy=0.5411 violation=0.0000 diagnostic=0.0000
+- particle_belief_mpc: success=0.5729 ci95=0.0702 error=0.0768 energy=0.5095 violation=0.0000 diagnostic=0.0000
+- old_vt_disagreement_branch_mpc: success=0.4948 ci95=0.0709 error=0.0827 energy=0.5517 violation=0.0000 diagnostic=0.5052
+- cvtb_mpc_v5: success=0.5469 ci95=0.0706 error=0.0777 energy=0.5088 violation=0.0000 diagnostic=0.0000
+- cvtb_no_probe: success=0.5469 ci95=0.0706 error=0.0777 energy=0.5088 violation=0.0000 diagnostic=0.0000
+- oracle_mode_mpc: success=0.8594 ci95=0.0493 error=0.0500 energy=0.5522 violation=0.0000 diagnostic=0.0000
 
 Combined-shift ablations:
-- full_vt_disagreement_branch_mpc: success=0.5000 ci95=0.1276 energy=0.5324
-- no_branch_preservation: success=0.5167 ci95=0.1275 energy=0.5470
-- no_diagnostic_value: success=0.5500 ci95=0.1269 energy=0.4812
-- no_disagreement_trigger: success=0.5833 ci95=0.1258 energy=0.4960
-- no_risk_penalty: success=0.6000 ci95=0.1250 energy=0.5229
-- no_tactile_residual_update: success=0.7667 ci95=0.1079 energy=0.5188
-- small_branch_set: success=0.5000 ci95=0.1276 energy=0.5271
+- cvtb_mpc_v5: success=0.5469 ci95=0.0706 energy=0.5088
+- cvtb_no_probe: success=0.5469 ci95=0.0706 energy=0.5088
+- ensemble_uncertainty_mpc: success=0.5417 ci95=0.0707 energy=0.5059
+- mean_only_fusion: success=0.5677 ci95=0.0703 energy=0.5102
+- no_branch_preservation: success=0.5417 ci95=0.0707 energy=0.5374
+- no_contact_safety: success=0.5469 ci95=0.0706 energy=0.5087
+- no_cvar_tail: success=0.5469 ci95=0.0706 energy=0.5087
+- no_reliability_fallback: success=0.5469 ci95=0.0706 energy=0.5088
+- no_sensor_health: success=0.5573 ci95=0.0704 energy=0.5086
+- no_value_of_information: success=0.5365 ci95=0.0707 energy=0.4911
+- old_vt_disagreement_branch_mpc: success=0.5000 ci95=0.0709 energy=0.5487
+- oracle_mode_mpc: success=0.8594 ci95=0.0493 energy=0.5522
+- robust_minimax_mpc: success=0.5833 ci95=0.0699 energy=0.5411
+- small_branch_set: success=0.5521 ci95=0.0705 energy=0.5075
+- tactile_trust_high: success=0.5573 ci95=0.0704 energy=0.5079
 
-Pairwise combined-shift comparisons vs vt_disagreement_branch_mpc:
-- random_push: diff=0.3667 t=3.4155 p=0.0006
-- vision_only_mpc: diff=-0.1000 t=-0.6203 p=0.5351
-- tactile_only_mpc: diff=-0.1833 t=-1.3289 p=0.1839
-- mean_fusion_mpc: diff=-0.2166 t=-2.6537 p=0.0080
-- ensemble_uncertainty_mpc: diff=-0.2833 t=-2.6391 p=0.0083
-- conformal_risk_filter: diff=-0.1333 t=-1.2058 p=0.2279
-- diagnostic_probe_then_mpc: diff=-0.1833 t=-1.3292 p=0.1838
-- oracle_mode_mpc: diff=-0.3500 t=-3.7716 p=0.0002
+Pairwise comparisons vs cvtb_mpc_v5:
+- combined_shift vs random_push: success_delta=0.4062 action_diff=1.0000 p=0.0000
+- combined_shift vs vision_only_mpc: success_delta=-0.0625 action_diff=0.5677 p=0.0131
+- combined_shift vs tactile_only_mpc: success_delta=0.0417 action_diff=0.4010 p=0.1153
+- combined_shift vs mean_fusion_mpc: success_delta=-0.0260 action_diff=0.0052 p=0.0940
+- combined_shift vs ensemble_uncertainty_mpc: success_delta=0.0052 action_diff=0.0000 p=0.7061
+- combined_shift vs conformal_risk_filter: success_delta=0.0521 action_diff=0.3333 p=0.0032
+- combined_shift vs diagnostic_probe_then_mpc: success_delta=0.0312 action_diff=1.0000 p=0.2001
+- combined_shift vs robust_minimax_mpc: success_delta=-0.0365 action_diff=0.7760 p=0.0332
+- combined_shift vs particle_belief_mpc: success_delta=-0.0260 action_diff=0.0052 p=0.0571
+- combined_shift vs old_vt_disagreement_branch_mpc: success_delta=0.0521 action_diff=0.5052 p=0.0571
+- combined_shift vs cvtb_no_probe: success_delta=0.0000 action_diff=0.0000 p=1.0000
+- combined_shift vs oracle_mode_mpc: success_delta=-0.3125 action_diff=0.9740 p=0.0000
+- contact_dropout vs random_push: success_delta=0.7135 action_diff=0.9948 p=0.0000
+- contact_dropout vs vision_only_mpc: success_delta=-0.0885 action_diff=0.9479 p=0.0001
+- contact_dropout vs tactile_only_mpc: success_delta=-0.0104 action_diff=0.9844 p=0.6554
+- contact_dropout vs mean_fusion_mpc: success_delta=-0.0729 action_diff=1.0000 p=0.0013
+- contact_dropout vs ensemble_uncertainty_mpc: success_delta=-0.0104 action_diff=0.9115 p=0.6837
+- contact_dropout vs conformal_risk_filter: success_delta=-0.0417 action_diff=0.8229 p=0.1010
+- contact_dropout vs diagnostic_probe_then_mpc: success_delta=0.0208 action_diff=1.0000 p=0.5056
+- contact_dropout vs robust_minimax_mpc: success_delta=-0.0365 action_diff=1.0000 p=0.1432
+- contact_dropout vs particle_belief_mpc: success_delta=-0.0521 action_diff=0.9635 p=0.0238
+- contact_dropout vs old_vt_disagreement_branch_mpc: success_delta=0.0365 action_diff=0.9844 p=0.1770
+- contact_dropout vs cvtb_no_probe: success_delta=0.0000 action_diff=0.0000 p=1.0000
+- contact_dropout vs oracle_mode_mpc: success_delta=-0.1094 action_diff=1.0000 p=0.0001
+- delayed_touch_sticky vs random_push: success_delta=0.5781 action_diff=1.0000 p=0.0000
+- delayed_touch_sticky vs vision_only_mpc: success_delta=0.0052 action_diff=0.0156 p=0.7820
+- delayed_touch_sticky vs tactile_only_mpc: success_delta=0.0000 action_diff=0.0104 p=1.0000
+- delayed_touch_sticky vs mean_fusion_mpc: success_delta=-0.0104 action_diff=0.0104 p=0.4146
+- delayed_touch_sticky vs ensemble_uncertainty_mpc: success_delta=-0.0104 action_diff=0.0156 p=0.4801
+- delayed_touch_sticky vs conformal_risk_filter: success_delta=-0.0052 action_diff=0.0000 p=0.6554
+- delayed_touch_sticky vs diagnostic_probe_then_mpc: success_delta=0.0156 action_diff=1.0000 p=0.6128
+- delayed_touch_sticky vs robust_minimax_mpc: success_delta=-0.0208 action_diff=0.4062 p=0.2052
+- delayed_touch_sticky vs particle_belief_mpc: success_delta=-0.0052 action_diff=0.0104 p=0.6554
+- delayed_touch_sticky vs old_vt_disagreement_branch_mpc: success_delta=-0.0156 action_diff=0.0104 p=0.3659
+- delayed_touch_sticky vs cvtb_no_probe: success_delta=0.0000 action_diff=0.0000 p=1.0000
+- delayed_touch_sticky vs oracle_mode_mpc: success_delta=-0.2969 action_diff=1.0000 p=0.0000
+- sensor_conflict vs random_push: success_delta=0.3021 action_diff=1.0000 p=0.0000
+- sensor_conflict vs vision_only_mpc: success_delta=-0.0677 action_diff=0.8698 p=0.0310
+- sensor_conflict vs tactile_only_mpc: success_delta=0.0260 action_diff=0.8542 p=0.3984
+- sensor_conflict vs mean_fusion_mpc: success_delta=-0.0625 action_diff=0.3906 p=0.0040
+- sensor_conflict vs ensemble_uncertainty_mpc: success_delta=-0.0052 action_diff=0.2552 p=0.7820
+- sensor_conflict vs conformal_risk_filter: success_delta=0.0312 action_diff=0.6302 p=0.1562
+- sensor_conflict vs diagnostic_probe_then_mpc: success_delta=0.0312 action_diff=1.0000 p=0.3766
+- sensor_conflict vs robust_minimax_mpc: success_delta=-0.0104 action_diff=0.7188 p=0.6380
+- sensor_conflict vs particle_belief_mpc: success_delta=-0.0312 action_diff=0.2292 p=0.0561
+- sensor_conflict vs old_vt_disagreement_branch_mpc: success_delta=0.0260 action_diff=0.8594 p=0.4115
+- sensor_conflict vs cvtb_no_probe: success_delta=0.0000 action_diff=0.0000 p=1.0000
+- sensor_conflict vs oracle_mode_mpc: success_delta=-0.2656 action_diff=0.9896 p=0.0000

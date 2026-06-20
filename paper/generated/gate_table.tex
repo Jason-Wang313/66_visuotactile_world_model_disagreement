@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\caption{Frozen decision gates. The decision is evidence-driven rather than presentation-driven.}
+\label{tab:gates}
+\small
+\begin{tabular}{p{0.22\linewidth}p{0.13\linewidth}p{0.55\linewidth}}
+\toprule
+Gate & Status & Evidence \\
+\midrule
+Weak baseline gate & \textbf{PASS} & CVTB-MPC beats random, tactile-only, and old VT in aggregate success/error. \\
+Strong baseline gate & \textbf{FAIL} & Matched or beaten by Vision only, Mean fusion, Ensemble uncertainty, Robust minimax, Particle belief \\
+Hostile split gate & \textbf{FAIL} & Lost hostile splits: Vision only on combined\_shift; Vision only on sensor\_conflict; Vision only on contact\_dropout; Mean fusion on delayed\_touch\_sticky \\
+Contact safety gate & \textbf{PASS} & CVTB contact violation 0.000; safest strong baseline 0.000. \\
+Mechanism ablation gate & \textbf{FAIL} & Non-identifying ablations: CVTB no-probe on combined\_shift; No sensor health on combined\_shift; No CVaR tail on combined\_shift; No reliability fallback on combined\_shift; Mean-only fusion on combined\_shift; CVTB no-probe on delayed\_touch\_sticky; No sensor health on delayed\_touch\_sticky \\
+Terminal decision & \textbf{KILL-ARCHIVE} & strong baselines or ablations match/beat CVTB-MPC: Vision only; Mean fusion; Ensemble uncertainty; Robust minimax; Particle belief; Vision only on combined\_shift; Vision only on sensor\_conflict; Vision only on contact\_dropout \\
+\bottomrule
+\end{tabular}
+\end{table}

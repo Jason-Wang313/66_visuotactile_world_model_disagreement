@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\caption{CVTB-MPC mechanism diagnostics by split. Probe and fallback rates are frozen outputs, not post-hoc annotations.}
+\label{tab:diagnostics}
+\scriptsize
+\begin{tabular}{lrrrrrr}
+\toprule
+Split & Success & Error & Entropy & Probe value & Diagnostic & Fallback \\
+\midrule
+combined\_shift & 0.547 & 0.078 & 1.206 & 0.072 & 0.000 & 0.000 \\
+contact\_dropout & 0.839 & 0.059 & 1.138 & 0.061 & 0.000 & 1.000 \\
+delayed\_touch\_sticky & 0.625 & 0.085 & 1.198 & 0.051 & 0.000 & 0.010 \\
+high\_friction & 1.000 & 0.019 & 1.166 & 0.047 & 0.000 & 0.000 \\
+low\_friction & 1.000 & 0.012 & 1.166 & 0.047 & 0.000 & 0.000 \\
+nominal & 1.000 & 0.011 & 1.166 & 0.046 & 0.000 & 0.000 \\
+sensor\_conflict & 0.312 & 0.151 & 1.253 & 0.111 & 0.000 & 0.255 \\
+sticky\_contact & 1.000 & 0.035 & 1.168 & 0.049 & 0.000 & 0.000 \\
+tactile\_noise & 0.974 & 0.018 & 1.232 & 0.083 & 0.000 & 0.094 \\
+vision\_bias & 0.469 & 0.088 & 1.176 & 0.060 & 0.000 & 0.047 \\
+\bottomrule
+\end{tabular}
+\end{table}

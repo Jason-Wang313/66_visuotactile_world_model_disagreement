@@ -1,0 +1,135 @@
+{\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{longtable}{@{}p{0.15\linewidth}p{0.18\linewidth}rrrrrr@{}}
+\caption{Complete paired CVTB-MPC comparison table.}\label{tab:full-pairwise}\\
+\toprule
+Split & Baseline & Pairs & $\Delta$ succ. & Err. impr. & Eng. impr. & Viol. $\Delta$ & Diff. \\
+\midrule
+\endfirsthead
+\toprule
+Split & Baseline & Pairs & $\Delta$ succ. & Err. impr. & Eng. impr. & Viol. $\Delta$ & Diff. \\
+\midrule
+\endhead
+combined shift & Random & 192 & 0.406 & 0.062 & -0.079 & 0.000 & 100.0\% \\
+combined shift & Vision only & 192 & -0.062 & -0.007 & 0.007 & 0.000 & 56.8\% \\
+combined shift & Tactile only & 192 & 0.042 & 0.005 & -0.010 & 0.000 & 40.1\% \\
+combined shift & Mean fusion & 192 & -0.026 & -0.003 & 0.002 & 0.000 & 0.5\% \\
+combined shift & Ensemble uncertainty & 192 & 0.005 & 0.002 & -0.003 & 0.000 & 0.0\% \\
+combined shift & Conformal risk & 192 & 0.052 & 0.007 & -0.015 & 0.000 & 33.3\% \\
+combined shift & Diagnostic probe & 192 & 0.031 & 0.003 & 0.089 & 0.000 & 100.0\% \\
+combined shift & Robust minimax & 192 & -0.036 & -0.002 & 0.032 & 0.000 & 77.6\% \\
+combined shift & Particle belief & 192 & -0.026 & -0.001 & 0.001 & 0.000 & 0.5\% \\
+combined shift & Old VT branch & 192 & 0.052 & 0.005 & 0.043 & 0.000 & 50.5\% \\
+combined shift & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+combined shift & Oracle & 192 & -0.312 & -0.028 & 0.043 & 0.000 & 97.4\% \\
+contact dropout & Random & 192 & 0.714 & 0.084 & -0.061 & 0.000 & 99.5\% \\
+contact dropout & Vision only & 192 & -0.088 & -0.023 & 0.035 & 0.000 & 94.8\% \\
+contact dropout & Tactile only & 192 & -0.010 & -0.019 & 0.034 & 0.000 & 98.4\% \\
+contact dropout & Mean fusion & 192 & -0.073 & -0.024 & 0.035 & 0.000 & 100.0\% \\
+contact dropout & Ensemble uncertainty & 192 & -0.010 & -0.018 & 0.034 & 0.000 & 91.1\% \\
+contact dropout & Conformal risk & 192 & -0.042 & -0.016 & 0.024 & 0.000 & 82.3\% \\
+contact dropout & Diagnostic probe & 192 & 0.021 & -0.016 & 0.116 & 0.000 & 100.0\% \\
+contact dropout & Robust minimax & 192 & -0.036 & -0.011 & 0.066 & 0.000 & 100.0\% \\
+contact dropout & Particle belief & 192 & -0.052 & -0.022 & 0.036 & 0.000 & 96.4\% \\
+contact dropout & Old VT branch & 192 & 0.036 & -0.014 & 0.063 & 0.000 & 98.4\% \\
+contact dropout & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+contact dropout & Oracle & 192 & -0.109 & -0.018 & 0.032 & 0.000 & 100.0\% \\
+delayed touch sticky & Random & 192 & 0.578 & 0.087 & -0.165 & 0.000 & 100.0\% \\
+delayed touch sticky & Vision only & 192 & 0.005 & -0.001 & 0.001 & 0.000 & 1.6\% \\
+delayed touch sticky & Tactile only & 192 & 0.000 & 0.004 & -0.001 & 0.000 & 1.0\% \\
+delayed touch sticky & Mean fusion & 192 & -0.010 & -0.003 & 0.005 & 0.000 & 1.0\% \\
+delayed touch sticky & Ensemble uncertainty & 192 & -0.010 & 0.003 & -0.003 & 0.000 & 1.6\% \\
+delayed touch sticky & Conformal risk & 192 & -0.005 & -0.002 & 0.000 & 0.000 & 0.0\% \\
+delayed touch sticky & Diagnostic probe & 192 & 0.016 & 0.000 & 0.128 & 0.000 & 100.0\% \\
+delayed touch sticky & Robust minimax & 192 & -0.021 & -0.011 & 0.021 & 0.000 & 40.6\% \\
+delayed touch sticky & Particle belief & 192 & -0.005 & 0.002 & -0.001 & 0.000 & 1.0\% \\
+delayed touch sticky & Old VT branch & 192 & -0.016 & 0.002 & -0.000 & 0.000 & 1.0\% \\
+delayed touch sticky & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+delayed touch sticky & Oracle & 192 & -0.297 & -0.043 & 0.132 & 0.000 & 100.0\% \\
+high friction & Random & 192 & 0.677 & 0.077 & -0.051 & 0.000 & 98.4\% \\
+high friction & Vision only & 192 & 0.000 & 0.002 & -0.000 & 0.000 & 0.5\% \\
+high friction & Tactile only & 192 & 0.000 & -0.000 & -0.001 & 0.000 & 0.0\% \\
+high friction & Mean fusion & 192 & 0.000 & 0.001 & -0.000 & 0.000 & 0.0\% \\
+high friction & Ensemble uncertainty & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+high friction & Conformal risk & 192 & 0.000 & -0.000 & 0.001 & 0.000 & 0.0\% \\
+high friction & Diagnostic probe & 192 & 0.000 & -0.001 & 0.082 & 0.000 & 100.0\% \\
+high friction & Robust minimax & 192 & 0.000 & 0.004 & 0.033 & 0.000 & 58.3\% \\
+high friction & Particle belief & 192 & 0.000 & -0.000 & 0.000 & 0.000 & 0.0\% \\
+high friction & Old VT branch & 192 & 0.000 & 0.000 & -0.002 & 0.000 & 0.0\% \\
+high friction & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+high friction & Oracle & 192 & 0.000 & 0.011 & 0.024 & 0.000 & 100.0\% \\
+low friction & Random & 192 & 0.635 & 0.078 & -0.032 & 0.000 & 98.4\% \\
+low friction & Vision only & 192 & 0.000 & -0.001 & 0.002 & 0.000 & 0.0\% \\
+low friction & Tactile only & 192 & 0.000 & 0.001 & -0.004 & 0.000 & 0.0\% \\
+low friction & Mean fusion & 192 & 0.000 & -0.001 & -0.001 & 0.000 & 0.0\% \\
+low friction & Ensemble uncertainty & 192 & 0.000 & -0.000 & -0.002 & 0.000 & 0.0\% \\
+low friction & Conformal risk & 192 & 0.000 & 0.000 & 0.001 & 0.000 & 0.0\% \\
+low friction & Diagnostic probe & 192 & 0.000 & -0.000 & 0.053 & 0.000 & 100.0\% \\
+low friction & Robust minimax & 192 & 0.026 & 0.027 & 0.026 & 0.000 & 55.2\% \\
+low friction & Particle belief & 192 & 0.000 & -0.000 & -0.004 & 0.000 & 0.0\% \\
+low friction & Old VT branch & 192 & 0.000 & 0.000 & -0.004 & 0.000 & 0.0\% \\
+low friction & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+low friction & Oracle & 192 & 0.000 & 0.016 & -0.044 & 0.000 & 100.0\% \\
+nominal & Random & 192 & 0.667 & 0.085 & -0.036 & 0.000 & 100.0\% \\
+nominal & Vision only & 192 & 0.000 & 0.001 & 0.001 & 0.000 & 0.0\% \\
+nominal & Tactile only & 192 & 0.000 & 0.000 & -0.002 & 0.000 & 0.0\% \\
+nominal & Mean fusion & 192 & 0.000 & 0.001 & -0.001 & 0.000 & 0.0\% \\
+nominal & Ensemble uncertainty & 192 & 0.000 & 0.000 & -0.001 & 0.000 & 0.0\% \\
+nominal & Conformal risk & 192 & 0.000 & -0.000 & 0.002 & 0.000 & 0.0\% \\
+nominal & Diagnostic probe & 192 & 0.000 & 0.001 & 0.065 & 0.000 & 100.0\% \\
+nominal & Robust minimax & 192 & 0.000 & 0.018 & 0.028 & 0.000 & 54.7\% \\
+nominal & Particle belief & 192 & 0.000 & 0.000 & -0.003 & 0.000 & 0.0\% \\
+nominal & Old VT branch & 192 & 0.000 & 0.000 & -0.003 & 0.000 & 0.0\% \\
+nominal & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+nominal & Oracle & 192 & 0.000 & 0.016 & -0.015 & 0.000 & 100.0\% \\
+sensor conflict & Random & 192 & 0.302 & 0.050 & -0.065 & 0.000 & 100.0\% \\
+sensor conflict & Vision only & 192 & -0.068 & -0.009 & 0.020 & 0.000 & 87.0\% \\
+sensor conflict & Tactile only & 192 & 0.026 & 0.017 & -0.002 & 0.000 & 85.4\% \\
+sensor conflict & Mean fusion & 192 & -0.062 & -0.008 & 0.012 & 0.000 & 39.1\% \\
+sensor conflict & Ensemble uncertainty & 192 & -0.005 & 0.004 & 0.003 & 0.000 & 25.5\% \\
+sensor conflict & Conformal risk & 192 & 0.031 & 0.012 & -0.026 & 0.000 & 63.0\% \\
+sensor conflict & Diagnostic probe & 192 & 0.031 & 0.018 & 0.087 & 0.000 & 100.0\% \\
+sensor conflict & Robust minimax & 192 & -0.010 & -0.004 & 0.034 & 0.000 & 71.9\% \\
+sensor conflict & Particle belief & 192 & -0.031 & -0.002 & 0.011 & 0.000 & 22.9\% \\
+sensor conflict & Old VT branch & 192 & 0.026 & 0.013 & 0.068 & 0.000 & 85.9\% \\
+sensor conflict & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+sensor conflict & Oracle & 192 & -0.266 & -0.079 & 0.042 & 0.000 & 99.0\% \\
+sticky contact & Random & 192 & 0.729 & 0.072 & -0.094 & 0.000 & 100.0\% \\
+sticky contact & Vision only & 192 & 0.000 & 0.002 & -0.006 & 0.000 & 2.1\% \\
+sticky contact & Tactile only & 192 & 0.005 & 0.000 & 0.003 & 0.000 & 0.0\% \\
+sticky contact & Mean fusion & 192 & 0.000 & 0.001 & -0.002 & 0.000 & 0.0\% \\
+sticky contact & Ensemble uncertainty & 192 & 0.000 & 0.000 & -0.000 & 0.000 & 0.0\% \\
+sticky contact & Conformal risk & 192 & 0.000 & -0.000 & 0.000 & 0.000 & 0.0\% \\
+sticky contact & Diagnostic probe & 192 & 0.000 & -0.002 & 0.127 & 0.000 & 100.0\% \\
+sticky contact & Robust minimax & 192 & 0.000 & -0.013 & 0.045 & 0.000 & 62.0\% \\
+sticky contact & Particle belief & 192 & 0.000 & -0.000 & 0.003 & 0.000 & 0.0\% \\
+sticky contact & Old VT branch & 192 & 0.005 & 0.001 & 0.001 & 0.000 & 0.0\% \\
+sticky contact & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+sticky contact & Oracle & 192 & 0.000 & -0.011 & 0.084 & 0.000 & 100.0\% \\
+tactile noise & Random & 192 & 0.667 & 0.085 & -0.056 & 0.000 & 99.5\% \\
+tactile noise & Vision only & 192 & -0.026 & -0.007 & 0.001 & 0.000 & 64.6\% \\
+tactile noise & Tactile only & 192 & 0.115 & 0.018 & -0.003 & 0.000 & 60.4\% \\
+tactile noise & Mean fusion & 192 & -0.021 & -0.004 & 0.001 & 0.000 & 12.0\% \\
+tactile noise & Ensemble uncertainty & 192 & 0.010 & 0.002 & 0.001 & 0.000 & 8.8\% \\
+tactile noise & Conformal risk & 192 & 0.052 & 0.013 & -0.017 & 0.000 & 46.4\% \\
+tactile noise & Diagnostic probe & 192 & 0.172 & 0.023 & 0.080 & 0.000 & 100.0\% \\
+tactile noise & Robust minimax & 192 & -0.026 & 0.021 & 0.036 & 0.000 & 81.8\% \\
+tactile noise & Particle belief & 192 & -0.016 & -0.002 & 0.004 & 0.000 & 10.9\% \\
+tactile noise & Old VT branch & 192 & 0.135 & 0.019 & 0.053 & 0.000 & 63.0\% \\
+tactile noise & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+tactile noise & Oracle & 192 & 0.005 & 0.021 & -0.020 & 0.000 & 100.0\% \\
+vision bias & Random & 192 & 0.323 & 0.055 & -0.037 & 0.000 & 99.5\% \\
+vision bias & Vision only & 192 & -0.005 & -0.000 & 0.010 & 0.000 & 43.2\% \\
+vision bias & Tactile only & 192 & 0.000 & -0.000 & -0.009 & 0.000 & 27.1\% \\
+vision bias & Mean fusion & 192 & -0.005 & -0.000 & 0.000 & 0.000 & 3.6\% \\
+vision bias & Ensemble uncertainty & 192 & -0.005 & -0.000 & -0.002 & 0.000 & 3.6\% \\
+vision bias & Conformal risk & 192 & 0.000 & 0.004 & -0.009 & 0.000 & 25.5\% \\
+vision bias & Diagnostic probe & 192 & -0.005 & -0.001 & 0.075 & 0.000 & 100.0\% \\
+vision bias & Robust minimax & 192 & 0.031 & 0.010 & 0.030 & 0.000 & 72.4\% \\
+vision bias & Particle belief & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 4.7\% \\
+vision bias & Old VT branch & 192 & 0.005 & 0.000 & 0.025 & 0.000 & 39.1\% \\
+vision bias & CVTB no-probe & 192 & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% \\
+vision bias & Oracle & 192 & -0.339 & -0.035 & 0.006 & 0.000 & 96.4\% \\
+\bottomrule
+\end{longtable}
+}

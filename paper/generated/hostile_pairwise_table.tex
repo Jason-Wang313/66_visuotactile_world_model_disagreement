@@ -1,0 +1,48 @@
+\begin{table}[t]
+\centering
+\caption{Paired CVTB-MPC deltas on hostile splits. Positive success/error/energy columns favor CVTB-MPC; contact delta is CVTB minus baseline.}
+\label{tab:hostile-pairwise}
+\scriptsize
+\begin{tabular}{llrrrrrr}
+\toprule
+Split & Baseline & $\Delta$ succ. & Error impr. & Energy impr. & Contact $\Delta$ & Action diff. & $p$ \\
+\midrule
+combined\_shift & Vision only & -0.062 & -0.007 & 0.007 & 0.000 & 56.8\% & 0.013 \\
+combined\_shift & Mean fusion & -0.026 & -0.003 & 0.002 & 0.000 & 0.5\% & 0.094 \\
+combined\_shift & Ensemble uncertainty & 0.005 & 0.002 & -0.003 & 0.000 & 0.0\% & 0.706 \\
+combined\_shift & Conformal risk & 0.052 & 0.007 & -0.015 & 0.000 & 33.3\% & 0.003 \\
+combined\_shift & Diagnostic probe & 0.031 & 0.003 & 0.089 & 0.000 & 100.0\% & 0.200 \\
+combined\_shift & Robust minimax & -0.036 & -0.002 & 0.032 & 0.000 & 77.6\% & 0.033 \\
+combined\_shift & Particle belief & -0.026 & -0.001 & 0.001 & 0.000 & 0.5\% & 0.057 \\
+combined\_shift & Old VT branch & 0.052 & 0.005 & 0.043 & 0.000 & 50.5\% & 0.057 \\
+combined\_shift & CVTB no-probe & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% & 1.000 \\
+sensor\_conflict & Vision only & -0.068 & -0.009 & 0.020 & 0.000 & 87.0\% & 0.031 \\
+sensor\_conflict & Mean fusion & -0.062 & -0.008 & 0.012 & 0.000 & 39.1\% & 0.004 \\
+sensor\_conflict & Ensemble uncertainty & -0.005 & 0.004 & 0.003 & 0.000 & 25.5\% & 0.782 \\
+sensor\_conflict & Conformal risk & 0.031 & 0.012 & -0.026 & 0.000 & 63.0\% & 0.156 \\
+sensor\_conflict & Diagnostic probe & 0.031 & 0.018 & 0.087 & 0.000 & 100.0\% & 0.377 \\
+sensor\_conflict & Robust minimax & -0.010 & -0.004 & 0.034 & 0.000 & 71.9\% & 0.638 \\
+sensor\_conflict & Particle belief & -0.031 & -0.002 & 0.011 & 0.000 & 22.9\% & 0.056 \\
+sensor\_conflict & Old VT branch & 0.026 & 0.013 & 0.068 & 0.000 & 85.9\% & 0.411 \\
+sensor\_conflict & CVTB no-probe & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% & 1.000 \\
+contact\_dropout & Vision only & -0.088 & -0.023 & 0.035 & 0.000 & 94.8\% & 0.000 \\
+contact\_dropout & Mean fusion & -0.073 & -0.024 & 0.035 & 0.000 & 100.0\% & 0.001 \\
+contact\_dropout & Ensemble uncertainty & -0.010 & -0.018 & 0.034 & 0.000 & 91.1\% & 0.684 \\
+contact\_dropout & Conformal risk & -0.042 & -0.016 & 0.024 & 0.000 & 82.3\% & 0.101 \\
+contact\_dropout & Diagnostic probe & 0.021 & -0.016 & 0.116 & 0.000 & 100.0\% & 0.506 \\
+contact\_dropout & Robust minimax & -0.036 & -0.011 & 0.066 & 0.000 & 100.0\% & 0.143 \\
+contact\_dropout & Particle belief & -0.052 & -0.022 & 0.036 & 0.000 & 96.4\% & 0.024 \\
+contact\_dropout & Old VT branch & 0.036 & -0.014 & 0.063 & 0.000 & 98.4\% & 0.177 \\
+contact\_dropout & CVTB no-probe & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% & 1.000 \\
+delayed\_touch\_sticky & Vision only & 0.005 & -0.001 & 0.001 & 0.000 & 1.6\% & 0.782 \\
+delayed\_touch\_sticky & Mean fusion & -0.010 & -0.003 & 0.005 & 0.000 & 1.0\% & 0.415 \\
+delayed\_touch\_sticky & Ensemble uncertainty & -0.010 & 0.003 & -0.003 & 0.000 & 1.6\% & 0.480 \\
+delayed\_touch\_sticky & Conformal risk & -0.005 & -0.002 & 0.000 & 0.000 & 0.0\% & 0.655 \\
+delayed\_touch\_sticky & Diagnostic probe & 0.016 & 0.000 & 0.128 & 0.000 & 100.0\% & 0.613 \\
+delayed\_touch\_sticky & Robust minimax & -0.021 & -0.011 & 0.021 & 0.000 & 40.6\% & 0.205 \\
+delayed\_touch\_sticky & Particle belief & -0.005 & 0.002 & -0.001 & 0.000 & 1.0\% & 0.655 \\
+delayed\_touch\_sticky & Old VT branch & -0.016 & 0.002 & -0.000 & 0.000 & 1.0\% & 0.366 \\
+delayed\_touch\_sticky & CVTB no-probe & 0.000 & 0.000 & 0.000 & 0.000 & 0.0\% & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
